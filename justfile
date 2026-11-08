@@ -24,6 +24,13 @@ routes:
 doctor *args:
     cargo loco doctor {{args}}
 
+outdated :
+    cargo outdated -d 1
+upgrade-dry:
+    cargo upgrade --dry-run --incompatible
+upgrade *args:
+    cargo upgrade {{args}}
+
 # ------------------------------------------------------------------------------
 # Database Operations
 # ------------------------------------------------------------------------------

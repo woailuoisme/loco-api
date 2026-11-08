@@ -11,7 +11,7 @@ rust = "stable"
 just = "latest"
 
 # 2. Loco & SeaORM 框架核心 CLI（代码生成、迁移与诊断）
-"cargo:loco-cli" = "latest"
+"cargo:loco" = "latest"
 "cargo:sea-orm-cli" = "latest"
 
 # 3. 快照测试审核工具（项目 requests 测试必备）

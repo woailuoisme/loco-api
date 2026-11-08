@@ -118,17 +118,3 @@ $:
               --cache-to "type=registry,ref=${REGISTRY}:cache-trixie,mode=max,image-manifest=true,oci-mediatypes=true" \
               --push \
               .
-        - name: Build and push release (alpine amd64)
-          script: |
-            set -euo pipefail
-            REGISTRY="${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}"
-            VERSION="${CNB_BRANCH##*/}"
-
-            docker buildx build \
-              --platform linux/amd64 \
-              --tag "${REGISTRY}:${VERSION}-alpine" \
-              --file ./Dockerfile.alpine \
-              --cache-from "type=registry,ref=${REGISTRY}:cache-alpine" \
-              --cache-to "type=registry,ref=${REGISTRY}:cache-alpine,mode=max,image-manifest=true,oci-mediatypes=true" \
-              --push \
-              .

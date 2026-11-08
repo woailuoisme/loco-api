@@ -5,7 +5,9 @@ ARG ALPINE_VERSION=3.24
 FROM lukemathwalker/cargo-chef:latest-rust-${RUST_VERSION}-alpine${ALPINE_VERSION} AS chef
 WORKDIR /app
 
-RUN apk add -q --no-cache -u ca-certificates build-base openssl-dev perl
+# 无需 apk add：rust:alpine 自带 ca-certificates / gcc / musl-dev，
+# 本项目唯一原生依赖 ring 只需 cc（由 gcc 提供）。
+# openssl-dev、perl 仅在 native-tls 或 vendored openssl 时才需要。
 
 # 关闭 musl 静态 CRT，生成动态链接 ELF 显著缩减体积（需在 chef 阶段统一声明）
 ENV RUSTFLAGS="-C target-feature=-crt-static"

@@ -10,7 +10,7 @@ cargo.binstall = true
 rust = "stable"
 just = "latest"
 
-# 2. SeaORM CLI（用于数据库逆向生成与模型检查）
+"cargo:loco" = "latest"
 "cargo:sea-orm-cli" = "latest"
 
 # 3. 快照测试审核工具（项目 requests 测试必备）

@@ -43,7 +43,6 @@ COPY --from=builder --chown=nobody:nogroup /app/target/release/locos /bin/locos
 RUN ln -s /bin/locos /app/locos
 
 COPY --chown=nobody:nogroup config/ /app/config/
-COPY --chown=nobody:nogroup locales/ /app/locales/
 
 RUN mkdir -p storages/logs storages/uploads storages/tmp && chown -R nobody:nogroup /app/storages
 

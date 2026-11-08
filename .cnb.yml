@@ -85,12 +85,41 @@
             --push \
             .
 
+.helm_pipeline: &helm_pipeline
+  - docker:
+      image: alpine/helm:latest
+    stages:
+      - name: Helm Lint
+        script: |
+          set -euo pipefail
+          helm lint ./helm/loco-api
+      - name: Package and Push Helm Chart
+        script: |
+          set -euo pipefail
+          REGISTRY="${CNB_HELM_REGISTRY:-helm.cnb.cool}"
+          GROUP="${CNB_GROUP_SLUG_LOWERCASE:-${CNB_REPO_SLUG_LOWERCASE%/*}}"
+
+          echo "Logging into Helm OCI registry ${REGISTRY}..."
+          helm registry login -u "${CNB_TOKEN_USER_NAME:-cnb}" -p "${CNB_TOKEN}" "${REGISTRY}"
+
+          echo "Packaging Helm chart..."
+          mkdir -p dist
+          helm package ./helm/loco-api -d dist
+
+          echo "Pushing Helm chart to oci://${REGISTRY}/${GROUP}..."
+          for pkg in dist/*.tgz; do
+            if [ -f "$pkg" ]; then
+              helm push "$pkg" "oci://${REGISTRY}/${GROUP}"
+            fi
+          done
+
 # ── main 分支：仅保留页面手动触发（已移除 push 触发）────────────────────
 main:
   web_trigger_trixie: *trixie_pipeline
   web_trigger_alpine: *alpine_pipeline
   web_trigger_multi: *trixie_multi_pipeline
   web_trigger_alpine_multi: *alpine_multi_pipeline
+  web_trigger_helm_publish: *helm_pipeline
 
 # ── 兜底：其余分支手动构建与 tag 发布 ──────────────────────────────────
 $:
@@ -98,6 +127,7 @@ $:
   web_trigger_alpine: *alpine_pipeline
   web_trigger_multi: *trixie_multi_pipeline
   web_trigger_alpine_multi: *alpine_multi_pipeline
+  web_trigger_helm_publish: *helm_pipeline
 
   tag_push:
     - services:
@@ -112,7 +142,6 @@ $:
             docker buildx build \
               --platform linux/amd64 \
               --tag "${REGISTRY}:${VERSION}" \
-              --tag "${REGISTRY}:${VERSION}-trixie" \
               --file ./Dockerfile \
               --cache-from "type=registry,ref=${REGISTRY}:cache-trixie" \
               --cache-to "type=registry,ref=${REGISTRY}:cache-trixie,mode=max,image-manifest=true,oci-mediatypes=true" \

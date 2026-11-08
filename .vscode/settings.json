@@ -7,9 +7,13 @@
   "rust-analyzer.cargo.buildScripts.enable": true,
   "files.associations": {
     "*.t": "jinja-html",
-    "*.yaml": "yaml",
     "*.toml": "toml",
-    "**/chart/templates/**/*.yaml": "helm"
+    "**/templates/**/*.yaml": "helm",
+    "**/templates/**/*.yml": "helm",
+    "**/templates/**/*.tpl": "helm",
+    "**/helm/**/templates/**/*.yaml": "helm",
+    "**/helm/**/templates/**/*.yml": "helm",
+    "**/helm/**/templates/**/*.tpl": "helm"
   },
   "files.watcherExclude": {
     "**/target/**": true,

@@ -1,0 +1,33 @@
+# Dependabot 配置：按 Rust / Loco 项目实际使用的技术栈划分
+# 覆盖范围：Cargo 依赖 + Dockerfile 基础镜像 + GitHub Actions 工作流
+version: 2
+updates:
+  # Rust / Cargo：管理 Cargo.toml 与 Cargo.lock
+  # minor 与 patch 自动聚合成单个 PR，避免高频通知打扰；major 保持单独 PR 便于排查破坏性变更
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      time: "09:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 10
+    groups:
+      cargo-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # GitHub Actions：保持 workflows 中的 action 为最新版本
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      time: "09:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns:
+          - "*"

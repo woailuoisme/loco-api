@@ -8,10 +8,17 @@ cargo.binstall = true
 [tools]
 # 1. 核心编译器与任务运行器
 rust = "stable"
-just = "latest"
 
 "cargo:loco" = "latest"
 "cargo:sea-orm-cli" = "latest"
-
-# 3. 快照测试审核工具（项目 requests 测试必备）
+#快照测试审核工具（项目 requests 测试必备）
 "cargo:cargo-insta" = "latest"
+
+just = "latest"
+lefthook = 'latest'
+git-cliff ='latest'
+release-plz = "latest"
+rumdl = 'latest'
+
+
+

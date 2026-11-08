@@ -18,3 +18,7 @@ branch:
       - name: Alpine 全架构构建 (AMD64 + ARM64)
         description: 构建并推送 Alpine Linux linux/amd64 与 linux/arm64 双架构镜像
         event: web_trigger_alpine_multi
+
+      - name: 发布 Helm Chart 制品 (OCI)
+        description: 打包并推送 Helm Chart 到 CNB OCI 制品库 (helm.cnb.cool)
+        event: web_trigger_helm_publish

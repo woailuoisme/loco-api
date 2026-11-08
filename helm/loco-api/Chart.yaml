@@ -1,0 +1,15 @@
+apiVersion: v2
+name: loco-api
+description: Production Helm chart for Loco.rs API backend
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - loco
+  - rust
+  - backend
+  - api
+home: https://loco.rs
+icon: https://loco.rs/images/logo.png
+maintainers:
+  - name: ailuoga

@@ -1,0 +1,56 @@
+ARG RUST_VERSION=1.99
+ARG ALPINE_VERSION=3.24
+
+# ── Chef 阶段 ─────────────────────────────────────────────────────────────────
+FROM lukemathwalker/cargo-chef:latest-rust-${RUST_VERSION}-alpine${ALPINE_VERSION} AS chef
+WORKDIR /app
+
+RUN apk add -q --no-cache -u ca-certificates build-base openssl-dev perl
+
+# 关闭 musl 静态 CRT，生成动态链接 ELF 显著缩减体积（需在 chef 阶段统一声明）
+ENV RUSTFLAGS="-C target-feature=-crt-static"
+
+# ── Planner 阶段 ──────────────────────────────────────────────────────────────
+FROM chef AS planner
+COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
+
+# ── Builder 阶段 ──────────────────────────────────────────────────────────────
+FROM chef AS builder
+COPY --from=planner /app/recipe.json recipe.json
+
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    cargo chef cook --release --locked --bin locos --recipe-path recipe.json
+
+COPY . .
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    cargo build --release --locked --bin locos
+
+# ── Runtime 阶段 ──────────────────────────────────────────────────────────────
+FROM alpine:${ALPINE_VERSION} AS runtime
+
+ENV LOCO_ENV=production \
+    APP_PORT=5150 \
+    APP_BINDING=0.0.0.0 \
+    TZ=Asia/Shanghai
+
+# 出站证书、时区、tini 及动态 musl (-crt-static) 所需的 libgcc
+RUN apk add -q --no-cache -u ca-certificates-bundle libgcc tini curl tzdata \
+    && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+WORKDIR /app
+
+# 二进制置于 PATH 并软链接兼容 /app/locos
+COPY --from=builder --chown=nobody:nogroup /app/target/release/locos /bin/locos
+RUN ln -s /bin/locos /app/locos
+
+COPY --chown=nobody:nogroup config/ /app/config/
+COPY --chown=nobody:nogroup locales/ /app/locales/
+
+RUN mkdir -p storages/logs storages/uploads storages/tmp && chown -R nobody:nogroup /app/storages
+
+USER nobody:nogroup
+EXPOSE 5150
+
+ENTRYPOINT ["tini", "--", "/app/locos"]
+CMD ["start"]

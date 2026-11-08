@@ -1,0 +1,20 @@
+# 手动触发按钮 — 分支详情页显示
+# 文档: https://docs.cnb.cool/zh/build/web-trigger.html
+
+branch:
+  - buttons:
+      - name: Trixie 极速构建 (仅 AMD64)
+        description: 构建 Debian Trixie linux/amd64 架构镜像 (耗时最短)
+        event: web_trigger_trixie
+
+      - name: Alpine 极速构建 (仅 AMD64)
+        description: 构建 Alpine Linux linux/amd64 架构镜像 (体积最小)
+        event: web_trigger_alpine
+
+      - name: Trixie 全架构构建 (AMD64 + ARM64)
+        description: 构建并推送 Debian Trixie linux/amd64 与 linux/arm64 双架构镜像
+        event: web_trigger_multi
+
+      - name: Alpine 全架构构建 (AMD64 + ARM64)
+        description: 构建并推送 Alpine Linux linux/amd64 与 linux/arm64 双架构镜像
+        event: web_trigger_alpine_multi

@@ -1,0 +1,8 @@
+# rumdl 配置 — 规则与选项参考 https://rumdl.dev/
+# 查看生效配置：rumdl config
+
+[global]
+# MD013（行长度）：README 中为整句说明段落与长链接，不按 80 列强制折行
+disable = ["MD013"]
+# 第三方/自动生成的 Loco 技能文档不参与检查
+exclude = [".claude/skills/**", ".agents/skills/**"]

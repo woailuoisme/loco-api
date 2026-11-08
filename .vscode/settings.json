@@ -1,0 +1,18 @@
+{
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.clippy": "explicit"
+  },
+  "rust-analyzer.check.command": "clippy",
+  "rust-analyzer.cargo.buildScripts.enable": true,
+  "files.associations": {
+    "*.t": "jinja-html",
+    "*.yaml": "yaml",
+    "*.toml": "toml",
+    "**/chart/templates/**/*.yaml": "helm"
+  },
+  "files.watcherExclude": {
+    "**/target/**": true,
+    "**/.codegraph/**": true
+  }
+}

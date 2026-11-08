@@ -1,0 +1,18 @@
+# ==============================================================================
+# Mise 开发环境与工具链管理配置 (.mise.toml)
+# 仅保留本地日常开发、脚手架生成与测试必需的核心工具链
+# ==============================================================================
+[settings]
+cargo.binstall = true
+
+[tools]
+# 1. 核心编译器与任务运行器
+rust = "stable"
+just = "latest"
+
+# 2. Loco & SeaORM 框架核心 CLI（代码生成、迁移与诊断）
+"cargo:loco-cli" = "latest"
+"cargo:sea-orm-cli" = "latest"
+
+# 3. 快照测试审核工具（项目 requests 测试必备）
+"cargo:cargo-insta" = "latest"

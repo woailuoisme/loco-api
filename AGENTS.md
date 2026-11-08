@@ -1,3 +1,4 @@
+
 # Agent guide for this Loco app
 
 This is a [Loco](https://loco.rs) app — **Rails for Rust**. When you are unsure
@@ -9,12 +10,12 @@ it." Where Loco diverges, it is because Rust forced it.
 A complete Loco skill ships with this app at **`.claude/skills/loco/`**, matched
 to the exact `loco-rs` version in `Cargo.toml`:
 
-| File | What it gives you |
-|---|---|
-| `.claude/skills/loco/SKILL.md` | start here — the router, `AppContext`, project layout, CLI |
-| `.claude/skills/loco/doctrine.md` | what good Loco code looks like; read before writing any |
+| File                                 | What it gives you                                                                                           |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `.claude/skills/loco/SKILL.md`     | start here — the router, `AppContext`, project layout, CLI                                               |
+| `.claude/skills/loco/doctrine.md`  | what good Loco code looks like; read before writing any                                                     |
 | `.claude/skills/loco/api-index.md` | every public `loco_rs` symbol, generated from rustdoc — **check here before guessing an API name** |
-| `.claude/skills/loco/recipes/` | how to add a model, endpoint, worker, task, mailer, middleware, auth, tests |
+| `.claude/skills/loco/recipes/`     | how to add a model, endpoint, worker, task, mailer, middleware, auth, tests                                 |
 
 If your tool supports Agent Skills, it will load `SKILL.md` automatically. If
 not, read it directly — it is a normal markdown file.
@@ -40,5 +41,5 @@ cargo test
 
 ## More
 
-- Docs: <https://loco.rs/docs/>
-- Framework agent guide: <https://loco.rs/AGENTS.md>
+- Docs: [https://loco.rs/docs/](https://loco.rs/docs/)
+- Framework agent guide: [https://loco.rs/AGENTS.md](https://loco.rs/AGENTS.md)

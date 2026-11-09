@@ -100,10 +100,11 @@ $:
   web_trigger_alpine_multi: *alpine_multi_pipeline
 
   tag_push:
-    # 阶段 1：构建并推送 Docker 镜像
+    # 单条流水线：stages 之间串行执行，后置步骤才能依赖前序产物
     - services:
         - docker
       stages:
+        # 阶段 1：构建并推送 Docker 镜像
         - name: Build and push release (trixie amd64)
           script: |
             set -euo pipefail
@@ -119,11 +120,9 @@ $:
               --push \
               .
 
-    # 阶段 2：打包并推送 Helm Chart (串行保证镜像已入库)
-    - docker:
-        image: alpine/helm:4
-      stages:
+        # 阶段 2：打包并推送 Helm Chart（保证镜像已入库）
         - name: Package and push Helm chart to CNB
+          image: alpine/helm:4
           script: |
             set -euo pipefail
             VERSION="${CNB_BRANCH##*/}"
@@ -137,3 +136,19 @@ $:
             mkdir -p dist
             helm package ./helm/loco-api --version "${SEMVER}" --app-version "${VERSION}" -d dist
             helm push dist/*.tgz "oci://${HELM_REGISTRY}/${TARGET_NAMESPACE}"
+
+        # 阶段 3：生成变更日志并创建 Release（jobs 数组形式为串行）
+        - name: Changelog & Release
+          jobs:
+            - name: Generate Changelog with git-cliff
+              image: orhunp/git-cliff:latest
+              script: |
+                set -eu
+                git-cliff --latest --strip header -o CHANGELOG.md
+            - name: Create CNB Release
+              type: git:release
+              options:
+                tag: ${CNB_BRANCH}
+                title: "Release ${CNB_BRANCH}"
+                descriptionFromFile: CHANGELOG.md
+                latest: true

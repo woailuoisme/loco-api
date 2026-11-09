@@ -54,10 +54,9 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=trixie,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=raw,value=trixie
             type=ref,event=tag
             type=ref,event=tag,suffix=-trixie
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
             type=sha,prefix=sha-
 
       - name: Build and push Docker image
@@ -77,7 +76,6 @@ jobs:
     name: Push Helm Chart (OCI)
     runs-on: ubuntu-24.04
     needs: [docker-build]
-    if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: read
       packages: write
@@ -105,7 +103,6 @@ jobs:
     name: Create GitHub Release
     runs-on: ubuntu-24.04
     needs: [helm-release]
-    if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: write
 

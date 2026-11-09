@@ -1,7 +1,4 @@
-# ==============================================================================
-# Mise 开发环境与工具链管理配置 (.mise.toml)
-# 仅保留本地日常开发、脚手架生成与测试必需的核心工具链
-# ==============================================================================
+
 [settings]
 cargo.binstall = true
 
@@ -11,7 +8,6 @@ rust = "stable"
 
 "cargo:loco" = "latest"
 "cargo:sea-orm-cli" = "latest"
-#快照测试审核工具（项目 requests 测试必备）
 "cargo:cargo-insta" = "latest"
 
 just = "latest"

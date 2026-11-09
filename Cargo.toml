@@ -2,13 +2,17 @@
 
 [package]
 name = "loco-api"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 publish = false
 default-run = "locos"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "locos"
+path = "src/bin/main.rs"
+required-features = []
 
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [workspace.dependencies]
 loco-rs = { version = "1.3", default-features = false }
 
@@ -39,11 +43,6 @@ uuid = { version = "1.29", features = ["v4"] }
 ts-rs = { version = "12", features = ["chrono-impl", "serde-compat"] }
 include_dir = { version = "0.7" }
 dotenvy = "0.15"
-
-[[bin]]
-name = "locos"
-path = "src/bin/main.rs"
-required-features = []
 
 [dev-dependencies]
 # `testing-core` leaves out the HTML selector assertions (`assert_css_*`);

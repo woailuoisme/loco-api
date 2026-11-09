@@ -1,0 +1,38 @@
+# release-plz 针对非发布到 crates.io 的 Rust Web 服务 (Loco API) 最佳实践配置
+# 文档参考: https://release-plz.ieni.dev/docs/config
+[workspace]
+# 纯 Git 模式：从 Git Tags 而非 crates.io 检测版本，跳过 cargo publish
+git_only = true
+# 开启 CHANGELOG 更新与 Git Release / Tag 创建
+changelog_update = true
+git_tag_enable = true
+git_release_enable = true
+# 专有应用与 Web API 无需检查 Rust 库级公共 API 破坏性变更 (加速 CI 并避免报错)
+semver_check = false
+# Release PR 配置：规范化分支名与标签
+pr_branch_prefix = "release-plz/"
+pr_labels = ["release"]
+# 主包发布定制：单 Tag 模式（使用标准 vX.Y.Z 格式）
+[[package]]
+name = "loco-api"
+git_tag_name = "v{{ version }}"
+# 内部数据库迁移 crate：随主工程一同构建，无需单独发布与打 Tag
+[[package]]
+name = "migration"
+release = false
+[changelog]
+# 强制保留破坏性变更提交，并在版本递增时遵循 SemVer
+protect_breaking_commits = true
+sort_commits = "oldest"
+trim = true
+# 过滤琐碎提交，结构化归类业务变更
+commit_parsers = [
+  { message = "^feat", group = "Added" },
+  { message = "^fix", group = "Fixed" },
+  { message = "^perf", group = "Performance" },
+  { message = "^refactor", group = "Refactor" },
+  { message = "^revert", group = "Reverted" },
+  { message = "^doc", group = "Documentation" },
+  { message = "^(chore|ci|test)", skip = true },
+  { message = "^.*", group = "Other" },
+]

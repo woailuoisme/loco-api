@@ -85,41 +85,12 @@
             --push \
             .
 
-.helm_pipeline: &helm_pipeline
-  - docker:
-      image: alpine/helm:latest
-    stages:
-      - name: Helm Lint
-        script: |
-          set -euo pipefail
-          helm lint ./helm/loco-api
-      - name: Package and Push Helm Chart
-        script: |
-          set -euo pipefail
-          REGISTRY="${CNB_HELM_REGISTRY:-helm.cnb.cool}"
-          GROUP="${CNB_GROUP_SLUG_LOWERCASE:-${CNB_REPO_SLUG_LOWERCASE%/*}}"
-
-          echo "Logging into Helm OCI registry ${REGISTRY}..."
-          helm registry login -u "${CNB_TOKEN_USER_NAME:-cnb}" -p "${CNB_TOKEN}" "${REGISTRY}"
-
-          echo "Packaging Helm chart..."
-          mkdir -p dist
-          helm package ./helm/loco-api -d dist
-
-          echo "Pushing Helm chart to oci://${REGISTRY}/${GROUP}..."
-          for pkg in dist/*.tgz; do
-            if [ -f "$pkg" ]; then
-              helm push "$pkg" "oci://${REGISTRY}/${GROUP}"
-            fi
-          done
-
 # ── main 分支：仅保留页面手动触发（已移除 push 触发）────────────────────
 main:
   web_trigger_trixie: *trixie_pipeline
   web_trigger_alpine: *alpine_pipeline
   web_trigger_multi: *trixie_multi_pipeline
   web_trigger_alpine_multi: *alpine_multi_pipeline
-  web_trigger_helm_publish: *helm_pipeline
 
 # ── 兜底：其余分支手动构建与 tag 发布 ──────────────────────────────────
 $:
@@ -127,9 +98,9 @@ $:
   web_trigger_alpine: *alpine_pipeline
   web_trigger_multi: *trixie_multi_pipeline
   web_trigger_alpine_multi: *alpine_multi_pipeline
-  web_trigger_helm_publish: *helm_pipeline
 
   tag_push:
+    # 阶段 1：构建并推送 Docker 镜像
     - services:
         - docker
       stages:
@@ -147,3 +118,22 @@ $:
               --cache-to "type=registry,ref=${REGISTRY}:cache-trixie,mode=max,image-manifest=true,oci-mediatypes=true" \
               --push \
               .
+
+    # 阶段 2：打包并推送 Helm Chart (串行保证镜像已入库)
+    - docker:
+        image: alpine/helm:4
+      stages:
+        - name: Package and push Helm chart to CNB
+          script: |
+            set -euo pipefail
+            VERSION="${CNB_BRANCH##*/}"
+            SEMVER="${VERSION#v}"
+            HELM_REGISTRY="${CNB_HELM_REGISTRY:-helm.cnb.cool}"
+            TARGET_NAMESPACE="${CNB_GROUP_SLUG_LOWERCASE:-${CNB_REPO_SLUG_LOWERCASE}}"
+
+            helm lint ./helm/loco-api
+            echo "${CNB_TOKEN}" | helm registry login "${HELM_REGISTRY}" -u "${CNB_TOKEN_USER_NAME:-cnb}" --password-stdin
+
+            mkdir -p dist
+            helm package ./helm/loco-api --version "${SEMVER}" --app-version "${VERSION}" -d dist
+            helm push dist/*.tgz "oci://${HELM_REGISTRY}/${TARGET_NAMESPACE}"

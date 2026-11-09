@@ -89,14 +89,14 @@ jobs:
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME}"
           SEMVER="${VERSION#v}"
-          REGISTRY="oci://${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/charts"
+          OCI_TARGET="oci://${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/charts"
 
           helm lint ./helm/loco-api
-          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login "${REGISTRY%%/*}" -u "${{ github.actor }}" --password-stdin
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login "${REGISTRY}" -u "${{ github.actor }}" --password-stdin
 
           mkdir -p dist
           helm package ./helm/loco-api --version "${SEMVER}" --app-version "${VERSION}" -d dist
-          helm push dist/*.tgz "${REGISTRY}"
+          helm push dist/*.tgz "${OCI_TARGET}"
 
   # ── 阶段 3: 创建 GitHub Release 并附带变更日志 ────────────────────────────
   github-release:

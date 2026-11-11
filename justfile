@@ -13,19 +13,19 @@ default:
 
 # Start the application server
 dev *args:
-    cargo loco start {{args}}
+    cargo loco start --no-banner {{args}}
 
 # Start with file watching and auto-restart
 watch *args:
-    cargo loco watch {{args}}
+    cargo loco watch --no-banner {{args}}
 
 # Build release binary and start the server (ideal for benchmarks and perf testing)
 start-release *args: build
-    ./target/release/locos start {{args}}
+    ./target/release/locos start --no-banner {{args}}
 
 # Build release binary and start server in production mode
 prod *args: build
-    LOCO_ENV=production ./target/release/locos start {{args}}
+    LOCO_ENV=production ./target/release/locos start --no-banner {{args}}
 
 # Print all registered HTTP routes
 routes:

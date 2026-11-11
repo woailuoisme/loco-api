@@ -4,11 +4,12 @@
 //! 所有具体的路由、中间件、Task、Worker 注册逻辑均已委托给 [`crate::setup`] 子模块办理。
 
 use async_trait::async_trait;
+use axum::Router as AxumRouter;
 use loco_rs::{
     Result,
-    app::{AppContext, Hooks, Initializer},
+    app::{AppContext, Hooks, Initializer, serve_router},
     bgworker::Queue,
-    boot::{BootResult, StartMode, create_app},
+    boot::{BootResult, ServeParams, StartMode, create_app},
     config::Config,
     controller::AppRoutes,
     db::truncate_table,
@@ -53,6 +54,26 @@ impl Hooks for App {
     /// 引导启动底层网络服务与数据库迁移驱动
     async fn boot(mode: StartMode, environment: &Environment, config: Config) -> Result<BootResult> {
         create_app::<Self, Migrator>(mode, environment, config).await
+    }
+
+    /// 启动 Axum Web 服务并输出精简结构化启动日志 (替代冗长 ASCII 字符画 Banner)
+    async fn serve(app: AxumRouter, ctx: &AppContext, serve_params: &ServeParams) -> Result<()> {
+        tracing::info!(
+            environment = %ctx.environment,
+            logger = %ctx.config.logger.level,
+            compilation = if cfg!(debug_assertions) { "debug" } else { "release" },
+            modes = "server",
+            listening = %format!("http://{}:{}", serve_params.binding, serve_params.port),
+            "Server ready"
+        );
+
+        let ctx_clone = ctx.clone();
+        serve_router(
+            app,
+            serve_params,
+            Box::pin(async move { Self::on_shutdown(&ctx_clone).await }),
+        )
+        .await
     }
 
     /// 在 AppContext 构建完成后，装配全局基础设施与运行时设置 (委托给 `setup::storage::init` 等)

@@ -2,7 +2,7 @@ ARG RUST_VERSION=1.99
 
 # ── Chef 阶段 ─────────────────────────────────────────────────────────────────
 # 基于 buildpack-deps，自带完整构建工具链与 perl（支持 vendored openssl 编译）
-FROM lukemathwalker/cargo-chef:latest-rust-${RUST_VERSION} AS chef
+FROM lukemathwalker/cargo-chef:latest-rust-${RUST_VERSION}-trixie AS chef
 WORKDIR /app
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
@@ -30,7 +30,6 @@ ENV LOCO_ENV=production \
     APP_BINDING=0.0.0.0 \
     TZ=Asia/Shanghai
 
-# 出站证书、时区、tini(PID 1) 及健康检查 curl
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates tzdata tini curl \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
@@ -50,4 +49,4 @@ USER nobody:nogroup
 EXPOSE 5150
 
 ENTRYPOINT ["tini", "--", "/app/locos"]
-CMD ["start"]
+CMD ["start", "--no-banner"]

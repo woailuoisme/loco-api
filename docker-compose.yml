@@ -10,13 +10,13 @@ x-app: &app
   networks:
     - backend
   volumes:
-    - ./storage:/app/storages
+    - ./storages:/app/storages
 
 services:
   api:
     <<: *app
     container_name: api
-    command: ["start"]
+    command: ["start", "--no-banner"]
     ports:
       - "5150:5150"
 
@@ -28,7 +28,7 @@ services:
   scheduler:
     <<: *app
     container_name: scheduler
-    command: ["start", "--scheduler"]
+    command: ["scheduler"]
 
 networks:
   backend:

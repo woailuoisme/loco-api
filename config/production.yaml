@@ -9,6 +9,8 @@ logger:
   # 生产环境关闭美化回溯以提升性能并避免向日志聚合器暴露源码路径
   pretty_backtrace: false
   level: <%= get_env(name="LOG_LEVEL", default="info") %>
+  # 覆盖日志过滤器 (屏蔽启动时冗长的路由与中间件注册日志，亦可通过 LOGGER_OVERRIDE_FILTER 覆写)
+  override_filter: <%= get_env(name="LOGGER_OVERRIDE_FILTER", default="info,loco_rs::controller::app_routes=warn") %>
   # json 格式便于 Loki, Datadog, ELK 等日志收集系统结构化索引
   format: json
   file_appender:
@@ -34,7 +36,8 @@ server:
       enable: true
     cors:
       enable: true
-      allow_origins: <%= get_env(name="CORS_ALLOWED_ORIGINS", default="*") %>
+      allow_origins:
+        - "<%= get_env(name='CORS_ALLOWED_ORIGINS', default='*') %>"
       allow_headers:
         - "content-type"
         - "authorization"
@@ -160,4 +163,21 @@ settings:
     service_name: "<%= get_env(name='OTEL_SERVICE_NAME', default='loco-api-prod') %>"
     sample_ratio: <%= get_env(name="OTEL_TRACES_SAMPLER_ARG", default="1.0") %>
     export_timeout_secs: <%= get_env(name="OTEL_EXPORT_TIMEOUT_SECS", default="5") %>
+
+# 11. 定时任务调度器配置 (Scheduler)
+scheduler:
+  output: stdout
+  jobs:
+    health_check:
+      run: "health:check"
+      schedule: "run every 1 hour"
+      output: silent
+      tags: ['maintenance', 'health']
+
+    clean_expired_tokens:
+      run: "clean_expired_tokens"
+      schedule: "at 03:00 am"
+      output: silent
+      tags: ['maintenance', 'cleanup']
+
 

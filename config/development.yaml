@@ -9,8 +9,8 @@ logger:
   level: <%= get_env(name="LOG_LEVEL", default="info") %>
   # 日志格式: compact, pretty, json
   format: compact
-  # 覆盖日志过滤器 (设置为 info 精简启动与数据库底层日志)
-  override_filter: info
+  # 覆盖日志过滤器 (屏蔽启动时冗长的路由与中间件注册日志，亦可通过 LOGGER_OVERRIDE_FILTER 覆写)
+  override_filter: <%= get_env(name="LOGGER_OVERRIDE_FILTER", default="info,loco_rs::controller::app_routes=warn") %>
   # Loco 原生文件追加器 (File Appender) 配置
   file_appender:
     enable: true
@@ -203,4 +203,21 @@ settings:
     service_name: "<%= get_env(name='OTEL_SERVICE_NAME', default='loco-api-dev') %>"
     sample_ratio: <%= get_env(name="OTEL_TRACES_SAMPLER_ARG", default="1.0") %>
     export_timeout_secs: <%= get_env(name="OTEL_EXPORT_TIMEOUT_SECS", default="3") %>
+
+# 11. 定时任务调度器配置 (Scheduler)
+scheduler:
+  output: stdout
+  jobs:
+    health_check:
+      run: "health:check"
+      schedule: "run every 1 hour"
+      output: silent
+      tags: ['maintenance', 'health']
+
+    clean_expired_tokens:
+      run: "clean_expired_tokens"
+      schedule: "at 03:00 am"
+      output: silent
+      tags: ['maintenance', 'cleanup']
+
 

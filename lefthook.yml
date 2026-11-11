@@ -2,16 +2,15 @@
 pre-commit:
   parallel: false
   jobs:
-    # 1. 自动格式化 Rust 源代码 (并自动重新暂存)
     - name: fmt
       glob: "*.rs"
       run: cargo fmt --all
       stage_fixed: true
-    # 2. 静态代码质量严格门禁 (全 Target、全 Features、零警告拦截)
+
     - name: clippy
       glob: "*.rs"
       run: cargo clippy --all-targets --all-features -- -D warnings
-    # 3. 自动格式化 Markdown 文档 (并自动重新暂存)
+
     - name: rumdl
       glob: "*.md"
       run: rumdl fmt {staged_files}

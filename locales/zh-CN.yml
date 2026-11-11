@@ -1,0 +1,61 @@
+app:
+  name: "Loco"
+
+auth:
+  welcome_title: "欢迎加入 %{app_name}！"
+  welcome_user: "欢迎来到 %{app_name}，%{name}！"
+  verify_email_subject: "[%{app_name}] 请验证您的电子邮箱地址"
+  reset_password_subject: "[%{app_name}] 重置您的账户密码"
+  otp_subject: "[%{app_name}] 您的登录验证码"
+  link_expire_notice: "此验证码将在 %{minutes} 分钟内失效。"
+  invalid_otp_code: "验证码无效或已过期。"
+  user_not_found: "未找到邮箱为 '%{email}' 的用户账号。"
+  email_already_exists: "电子邮箱 '%{email}' 已被注册。"
+  password_reset_sent: "如果邮箱 '%{email}' 存在于我们的系统中，重置密码邮件已成功发送。"
+
+errors:
+  unauthorized: "需要身份验证方可访问该资源。"
+  bad_request: "请求参数格式无效。"
+  internal_error: "服务器内部发生异常，请稍后重试。"
+
+validation:
+  # 通用与非空
+  required: "该字段为必填项。"
+  not_empty: "该字段不能为空。"
+  invalid: "输入的字段值无效。"
+
+  # 格式与类型
+  email: "邮箱地址格式不正确。"
+  url: "URL 链接格式不正确。"
+  phone: "手机/电话号码格式不正确。"
+  ip: "IP 地址格式不正确。"
+  uuid: "UUID 格式不正确。"
+  json: "JSON 格式不正确。"
+
+  # 字符串长度
+  min_length: "长度至少为 %{min} 个字符。"
+  max_length: "长度不能超过 %{max} 个字符。"
+  length_range: "长度必须在 %{min} 至 %{max} 个字符之间。"
+  exact_length: "长度必须刚好为 %{length} 个字符。"
+
+  # 数值与范围
+  numeric: "必须为有效的数字。"
+  integer: "必须为整数。"
+  min_value: "数值必须大于等于 %{min}。"
+  max_value: "数值必须小于等于 %{max}。"
+  range: "数值必须在 %{min} 至 %{max} 之间。"
+  positive: "必须为正数。"
+
+  # 模式与匹配
+  alphanumeric: "仅能包含字母和数字。"
+  alpha: "仅能包含字母。"
+  digits: "仅能包含数字。"
+  must_match: "两次输入的内容不一致。"
+  regex: "内容格式不符合要求。"
+
+  # 业务约束
+  unique: "该值已被使用，不可重复。"
+  exists: "所选记录不存在或已失效。"
+  invalid_choice: "所选选项不在允许的范围内。"
+  future_date: "时间必须在未来。"
+  past_date: "时间必须在过去。"

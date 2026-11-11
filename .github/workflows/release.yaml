@@ -1,8 +1,10 @@
-# GitHub Actions — 统一发布流水线 (Release & Delivery)
+# GitHub Actions — 统一发布交付流水线 (Release & Delivery)
+# 触发策略: 仅在推送版本标签 (v*) 或手动触发时执行，与 CNB (.cnb.yml) 保持 100% 行为对齐
+#
 # 职责分工:
 #   1. docker-build:   构建 Linux amd64 镜像并推送到 GHCR
 #   2. helm-release:   提取版本，打包并以 OCI 协议推送 Helm Chart 至 GHCR
-#   3. github-release: git-cliff 提取日志并创建正式 GitHub Release
+#   3. github-release: 使用 git-cliff 提取版本变更日志并创建 GitHub Release
 
 name: Release & Delivery
 
@@ -36,13 +38,13 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v4
+        uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -50,7 +52,7 @@ jobs:
 
       - name: Extract Docker metadata
         id: meta
-        uses: docker/metadata-action@v6
+        uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
@@ -60,7 +62,7 @@ jobs:
             type=sha,prefix=sha-
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
@@ -82,7 +84,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Publish Helm Chart to GHCR
         run: |
@@ -98,7 +100,7 @@ jobs:
           helm package ./helm/loco-api --version "${SEMVER}" --app-version "${VERSION}" -d dist
           helm push dist/*.tgz "${OCI_TARGET}"
 
-  # ── 阶段 3: 创建 GitHub Release 并附带变更日志 ────────────────────────────
+  # ── 阶段 3: 使用 git-cliff 生成变更日志并创建 GitHub Release ────────────────
   github-release:
     name: Create GitHub Release
     runs-on: ubuntu-24.04
@@ -108,7 +110,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -116,13 +118,12 @@ jobs:
         uses: orhun/git-cliff-action@v4
         id: git-cliff
         with:
-          config: cliff.toml
           args: --latest --strip header
         env:
           OUTPUT: RELEASE_NOTES.md
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@v2
         with:
           body_path: RELEASE_NOTES.md
           prerelease: auto

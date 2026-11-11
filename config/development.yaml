@@ -1,120 +1,206 @@
-# Loco configuration file documentation
+# Loco 应用开发环境配置文件 (development.yaml)
 
-# Application logging configuration
+# 1. 日志与链路追踪配置 (Logger)
 logger:
-  # Enable or disable logging.
   enable: true
-  # Enable pretty backtrace (sets RUST_BACKTRACE=1)
-  pretty_backtrace: true
-  # Log level, options: trace, debug, info, warn or error.
-  level: <%= get_env(name="LOG_LEVEL", default="debug") %>
-  # Define the logging format. options: compact, pretty or json
+  # 是否开启美化堆栈跟踪 (设为 false 消除启动 WARN；需要堆栈时可通过 RUST_BACKTRACE=1 或该环境变量控制)
+  pretty_backtrace: <%= get_env(name="LOGGER_PRETTY_BACKTRACE", default="false") %>
+  # 日志级别: trace, debug, info, warn, error
+  level: <%= get_env(name="LOG_LEVEL", default="info") %>
+  # 日志格式: compact, pretty, json
   format: compact
-  # By default the logger has filtering only logs that came from your code or logs that came from `loco` framework. to see all third party libraries
-  # Uncomment the line below to override to see all third party libraries you can enable this config and override the logger filters.
-  # override_filter: trace
-
-# Web server configuration
-server:
-  # Port on which the server will listen. the server binding is 0.0.0.0:{PORT}
-  # Every Loco app defaults to 5150, so a second one on this machine will
-  # collide. Override without editing this file: `PORT=5151 cargo loco start`.
-  port: <%= get_env(name="PORT", default="5150") %>
-  # Binding for the server (which interface to bind to)
-  binding: <%= get_env(name="BINDING", default="localhost") %>
-  # The UI hostname or IP address that mailers will point to.
-  host: http://localhost
-  # Out of the box middleware configuration. to disable middleware you can changed the `enable` field to `false` of comment the middleware block
-  middlewares:
-
-# Worker Configuration
-workers:
-  # specifies the worker mode. Options:
-  #   - BackgroundQueue - Workers operate asynchronously in the background, processing queued.
-  #   - ForegroundBlocking - Workers operate in the foreground and block until tasks are completed.
-  #   - BackgroundAsync - Workers operate asynchronously in the background, processing tasks with async capabilities.
-  mode: BackgroundQueue
-
-  
-# Queue Configuration
-queue:
-  kind: Redis
-  
-  # Redis connection URI
-  uri: <%= get_env(name="REDIS_URL", default="redis://127.0.0.1") %>
-  # Dangerously flush all data in Redis on startup. dangerous operation, make sure that you using this flag only on dev environments or test mode
-  dangerously_flush: false
-  
-
-# Mailer Configuration.
-mailer:
-  # Sending mail in development needs something listening on the port below.
-  # Run a local catcher — mailpit, MailHog or maildev all default to SMTP on
-  # 1025 with a web inbox on 8025 — e.g. `docker run -p 1025:1025 -p 8025:8025
-  # axllent/mailpit`, then read the mail at http://localhost:8025.
-  # Prefer not to run one? Set `stub: true` here (as `config/test.yaml` does)
-  # to record deliveries in memory instead of sending them.
-  # SMTP mailer configuration.
-  smtp:
-    # Enable/Disable smtp mailer.
+  # 覆盖日志过滤器 (设置为 info 精简启动与数据库底层日志)
+  override_filter: info
+  # Loco 原生文件追加器 (File Appender) 配置
+  file_appender:
     enable: true
-    # SMTP server host. e.x localhost, smtp.gmail.com
-    host: <%= get_env(name="MAILER_HOST", default="localhost") %>
-    # SMTP server port
-    port: 1025
-    # Use secure connection (SSL/TLS).
-    secure: false
-    # auth:
-    #   user:
-    #   password:
-    # Override the SMTP hello name (default is the machine's hostname)
-    # hello_name:
+    non_blocking: true
+    level: info
+    format: compact
+    rotation: daily
+    dir: ./storages/logs
+    filename_prefix: loco-api
+    filename_suffix: log
+    max_log_files: 7
 
-# Initializers Configuration
-# initializers:
-#  oauth2:
-#    authorization_code: # Authorization code grant type
-#      - client_identifier: google # Identifier for the OAuth2 provider. Replace 'google' with your provider's name if different, must be unique within the oauth2 config.
-#        ... other fields
+# 2. Web 服务与中间件配置 (Web Server & Middlewares)
+server:
+  port: <%= get_env(name="APP_PORT", default="5150") %>
+  binding: <%= get_env(name="APP_BINDING", default="localhost") %>
+  host: <%= get_env(name="APP_URL", default="http://localhost") %>
+  # X-Powered-By 响应头标识 (设置为 "" 空字符串即可禁用 X-Powered-By 响应头)
+  ident: "<%= get_env(name='SERVER_IDENT', default='') %>"
+  # 全量 Loco 内置中间件显式配置表 (All Built-in Loco Middlewares)
+  middlewares:
+    # 1. 日志中间件：记录请求 HTTP 状态码与耗时
+    logger:
+      enable: true
 
-# Database Configuration
+    # 2. 跨域支持：开发环境开放前端常用端口 (React 3000, Vite 5173 等)
+    cors:
+      enable: true
+      allow_origins:
+        - "http://localhost:3000"
+        - "http://localhost:5173"
+        - "http://127.0.0.1:3000"
+        - "http://127.0.0.1:5173"
+      allow_headers:
+        - "content-type"
+        - "authorization"
+        - "accept"
+      allow_methods:
+        - "GET"
+        - "POST"
+        - "PUT"
+        - "DELETE"
+        - "OPTIONS"
+
+    # 3. Gzip / Brotli 数据压缩：节省网络带宽
+    compression:
+      enable: true
+
+    # 4. 请求 Payload 体积限制 (防止大文件/大 JSON 崩溃)
+    limit_payload:
+      enable: true
+      body_limit: "5mb"
+
+    # 5. ETag 响应缓存哈希
+    etag:
+      enable: true
+
+    # 6. Panic 异常捕获 (防止单请求 panic 影响服务)
+    catch_panic:
+      enable: true
+
+    # 7. 全局请求 Trace ID 追踪
+    request_id:
+      enable: true
+
+    # 8. 真实客户端 IP 提取 (反向代理如 Nginx/Caddy 环境使用)
+    remote_ip:
+      enable: false
+
+    # 9. 请求超时保护 (超时自动返回 408 Timeout)
+    timeout_request:
+      enable: false
+      timeout: 5000
+
+    # 10. OWASP 安全 HTTP 响应头 (HSTS, CSP, X-Frame-Options 等)
+    secure_headers:
+      enable: true
+
+    # 11. 静态资源托管服务 (托管前端编译出的静态文件)
+    static:
+      enable: false
+      must_exist: false
+      path: "/public"
+      folder:
+        uri: "public"
+        path: "public"
+
+    # 12. SPA 单页应用路由 Fallback 兜底处理
+    fallback:
+      enable: false
+      path: "frontend/dist/index.html"
+
+# 3. 后台异步任务 Worker 配置 (Worker)
+workers:
+  # 运行模式说明:
+  #   - BackgroundAsync:   开发推荐。内存并发运行 (tokio::spawn)，无需 Redis 依赖，进程重启未完成任务会丢失。
+  #   - BackgroundQueue:   生产推荐。基于 Redis 消息队列持久化，支持重试/延迟任务/分布式 Worker，可靠性高。
+  #   - ForegroundBlocking: 测试推荐。前台同步阻塞运行，主要用于单元/集成测试中确保任务即时完成。
+  mode: BackgroundAsync
+
+# 4. 邮件服务配置 (SMTP Mailer，支持标准 SMTP 及 Resend SMTP Relay)
+mailer:
+  smtp:
+    enable: <%= get_env(name="MAIL_ENABLED", default="true") %>
+    host: <%= get_env(name="MAIL_HOST", default="127.0.0.1") %>
+    port: <%= get_env(name="MAIL_PORT", default="1025") %>
+    secure: <%= get_env(name="MAIL_SECURE", default="false") %>
+    auth:
+      user: "<%= get_env(name='MAIL_USERNAME', default='') %>"
+      password: "<%= get_env(name='MAIL_PASSWORD', default='') %>"
+
+# 5. 对象存储配置 (Storage - S3 兼容协议: Garage / MinIO / AWS S3)
+storage:
+  kind: Aws
+  bucket: <%= get_env(name="AWS_BUCKET", default="default") %>
+  region: <%= get_env(name="AWS_DEFAULT_REGION", default="garage") %>
+  endpoint: <%= get_env(name="AWS_ENDPOINT", default="http://127.0.0.1:3900") %>
+  access_key_id: <%= get_env(name="AWS_ACCESS_KEY_ID", default="GKfd16f76e81fb861a868a01b9b19452ad") %>
+  secret_access_key: <%= get_env(name="AWS_SECRET_ACCESS_KEY", default="18d5eda476ff7fb88f0bec38eae3a5e468020ae6dfc610defe2f3f72a65c4339") %>
+
+# 6. 数据库配置 (Database - PostgreSQL)
 database:
-  # Database connection URI
-  uri: <%= get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/loco-api_development") %>
-  # When enabled, the sql query will be logged.
-  enable_logging: <%= get_env(name="DB_LOGGING", default="false") %>
-  # Set the timeout duration when acquiring a connection.
+  uri: <%= get_env(name="DB_URL", default="postgres://postgres:598f18a1c99d539ced6631add2b428b3@127.0.0.1:5432/loco_api_development") %>
+  enable_logging: false
   connect_timeout: <%= get_env(name="DB_CONNECT_TIMEOUT", default="500") %>
-  # Set the idle duration before closing a connection.
   idle_timeout: <%= get_env(name="DB_IDLE_TIMEOUT", default="500") %>
-  # Minimum number of connections for a pool.
   min_connections: <%= get_env(name="DB_MIN_CONNECTIONS", default="1") %>
-  # Maximum number of connections for a pool. More than one, so code that holds
-  # a transaction (or a lock) while another query or a background job needs a
-  # connection does not stall until `connect_timeout` fails it.
-  max_connections: <%= get_env(name="DB_MAX_CONNECTIONS", default="5") %>
-  # Run migration up when application loaded
-  auto_migrate: true
-  # Truncate database when application loaded. This is a dangerous operation, make sure that you using this flag only on dev environments or test mode
+  max_connections: <%= get_env(name="DB_MAX_CONNECTIONS", default="10") %>
+  # 应用启动时自动运行数据库迁移
+  auto_migrate: <%= get_env(name="DB_AUTO_MIGRATE", default="true") %>
+  # 启动时清空数据库 (危险操作，仅适用于开发/测试环境)
   dangerously_truncate: false
-  # Recreating schema when application loaded.  This is a dangerous operation, make sure that you using this flag only on dev environments or test mode
+  # 启动时重建 Schema (危险操作，仅适用于开发/测试环境)
   dangerously_recreate: false
 
-# Authentication Configuration
+# 7. 身份认证与安全配置 (Authentication & JWT)
 auth:
-  # JWT authentication
   jwt:
-    # Secret key for token generation and verification
-    secret: 2fvHIG7oiTi0dlVeYkqj
-    # Token expiration time in seconds
-    expiration: 604800 # 7 days
-    # Where to read the token from. Omitted => `Authorization: Bearer <token>`.
-    # A cookie or query parameter is a single map with a `from:` tag:
-    #
-    # location:
-    #   from: Cookie
-    #   name: auth_token
-    #
-    # `from:` is one of Bearer, Cookie, Query. Cookie and Query also take a
-    # `name:`. A YAML list of these tries each in order and uses the first
-    # that yields a token. See https://loco.rs/docs/how-to/jwt-locations
+    # 用于 JWT 签名与验证的私钥
+    secret: <%= get_env(name="JWT_SECRET", default="2fvHIG7oiTi0dlVeYkqjchange_me_jwt_secret_64_hex_chars") %>
+    # Token 过期时间 (秒，例如 604800 表示 7 天)
+    expiration: <%= get_env(name="JWT_TTL", default="604800") %>
+
+# 8. 缓存配置 (Cache - Redis / Valkey 共享缓存)
+cache:
+  kind: Redis
+  uri: "<%= get_env(name='CACHE_URL', default='redis://127.0.0.1:6379/1') %>"
+  # 内存/连接最大限制
+  max_size: <%= get_env(name='CACHE_MAX_SIZE', default='10') %>
+
+# 9. 自定义应用设置 (ctx.config.settings)
+settings:
+  oauth2:
+    google:
+      client_id: <%= get_env(name="GOOGLE_CLIENT_ID", default="") %>
+      client_secret: <%= get_env(name="GOOGLE_CLIENT_SECRET", default="") %>
+  media:
+    driver: <%= get_env(name="MEDIA_DRIVER", default="direct") %>
+    base_url: "<%= get_env(name='MEDIA_BASE_URL', default='http://localhost:5150/v1/files') %>"
+    imgproxy:
+      endpoint: "<%= get_env(name='IMGPROXY_ENDPOINT', default='http://localhost:8080') %>"
+      key: "<%= get_env(name='IMGPROXY_KEY', default='') %>"
+      salt: "<%= get_env(name='IMGPROXY_SALT', default='') %>"
+    cloudflare:
+      domain: "<%= get_env(name='CF_IMAGE_DOMAIN', default='cdn.example.com') %>"
+    aliyun_oss:
+      bucket: "<%= get_env(name='ALIYUN_OSS_BUCKET', default='my-bucket') %>"
+      endpoint: "<%= get_env(name='ALIYUN_OSS_ENDPOINT', default='oss-cn-hangzhou.aliyuncs.com') %>"
+  telegram:
+    bot_token: "<%= get_env(name='TELEGRAM_BOT_TOKEN', default='') %>"
+    chat_id: "<%= get_env(name='TELEGRAM_CHAT_ID', default='') %>"
+    api_url: "<%= get_env(name='TELEGRAM_API_URL', default='https://api.telegram.org') %>"
+  scout:
+    meilisearch:
+      host: "<%= get_env(name='MEILISEARCH_HOST', default='http://localhost:7700') %>"
+      key: "<%= get_env(name='MEILISEARCH_KEY', default='') %>"
+      prefix: "<%= get_env(name='MEILISEARCH_INDEX_PREFIX', default='loco_') %>"
+  system:
+    machine_id: <%= get_env(name="MACHINE_ID", default="1") %>
+  centrifugo:
+    api_endpoint: "<%= get_env(name='CENTRIFUGO_API_ENDPOINT', default='http://localhost:48000/api') %>"
+    api_key: "<%= get_env(name='CENTRIFUGO_API_KEY', default='aef5a17a-fdeb-48aa-b2c1-d490c62ff950') %>"
+    token_hmac_secret: "<%= get_env(name='CENTRIFUGO_TOKEN_HMAC_SECRET', default='768583f3-7205-4b36-aea3-32ca8dea4914') %>"
+    token_audience: "<%= get_env(name='CENTRIFUGO_TOKEN_AUDIENCE', default='centrifugo') %>"
+    ws_url: "<%= get_env(name='CENTRIFUGO_WS_URL', default='ws://localhost:48000/connection/websocket') %>"
+    token_ttl_secs: <%= get_env(name="CENTRIFUGO_TOKEN_TTL_SECS", default="86400") %>
+  opentelemetry:
+    enabled: <%= get_env(name="OTEL_ENABLED", default="false") %>
+    endpoint: "<%= get_env(name='OTEL_EXPORTER_OTLP_ENDPOINT', default='http://127.0.0.1:4318') %>"
+    service_name: "<%= get_env(name='OTEL_SERVICE_NAME', default='loco-api-dev') %>"
+    sample_ratio: <%= get_env(name="OTEL_TRACES_SAMPLER_ARG", default="1.0") %>
+    export_timeout_secs: <%= get_env(name="OTEL_EXPORT_TIMEOUT_SECS", default="3") %>
+

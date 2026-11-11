@@ -1,0 +1,70 @@
+//! # 文件上传与下载控制器 (Files Controller)
+
+use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
+use loco_rs::prelude::*;
+
+use crate::{
+    common::consts::{api::API_PREFIX, openapi::TAG_FILES},
+    dtos::files::FileUploadResource,
+    errors::AppResult,
+    services::FileService,
+};
+
+/// 单文件/多文件上传接口
+#[utoipa::path(
+    post,
+    path = "/v1/files",
+    summary = "上传文件",
+    description = "上传单个或多个文件",
+    responses(
+        (status = 200, description = "上传成功", body = Vec<FileUploadResource>),
+        (status = 400, description = "请求参数或文件格式错误"),
+        (status = 401, description = "未授权")
+    ),
+    security(
+        ("bearer_auth" = [])
+    ),
+    tag = TAG_FILES
+)]
+#[debug_handler]
+pub async fn upload(
+    _auth: crate::controllers::auth::AuthSession,
+    State(ctx): State<AppContext>,
+    multipart: Multipart,
+) -> AppResult<Json<Vec<FileUploadResource>>> {
+    let uploaded_files = FileService::upload(&ctx, multipart).await?;
+    Ok(Json(uploaded_files))
+}
+
+/// 获取文件内容/下载接口
+#[utoipa::path(
+    get,
+    path = "/v1/files/{*key}",
+    summary = "获取/下载文件",
+    description = "根据文件 Key 获取文件内容",
+    params(
+        ("key" = String, Path, description = "文件相对路径 Key")
+    ),
+    responses(
+        (status = 200, description = "获取成功"),
+        (status = 400, description = "非法的路径 Key"),
+        (status = 404, description = "文件不存在")
+    ),
+    tag = TAG_FILES
+)]
+#[debug_handler]
+pub async fn get_file(State(ctx): State<AppContext>, Path(key): Path<String>) -> AppResult<Response> {
+    let (content_type, bytes) = FileService::download(&ctx, &key).await?;
+
+    let mut headers = HeaderMap::new();
+    headers.insert(header::CONTENT_TYPE, HeaderValue::from_static(content_type));
+
+    Ok((StatusCode::OK, headers, bytes).into_response())
+}
+
+pub fn routes() -> Routes {
+    Routes::new()
+        .prefix(&format!("{API_PREFIX}/files"))
+        .add("", post(upload))
+        .add("/{*key}", get(get_file))
+}

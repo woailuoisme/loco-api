@@ -4,13 +4,16 @@
 use loco_rs::prelude::*;
 use serde_json::json;
 
-use crate::models::users;
+use crate::{common::consts::app::APP_NAME, models::user};
 
 static welcome: Dir<'_> = include_dir!("src/mailers/auth/welcome");
 static forgot: Dir<'_> = include_dir!("src/mailers/auth/forgot");
-static magic_link: Dir<'_> = include_dir!("src/mailers/auth/magic_link");
+static otp: Dir<'_> = include_dir!("src/mailers/auth/otp");
 
-#[allow(clippy::module_name_repetitions)]
+#[expect(
+    clippy::module_name_repetitions,
+    reason = "Mailer 实体名需带域前缀，与模块名 auth 的重复是 Loco 约定"
+)]
 pub struct AuthMailer {}
 impl Mailer for AuthMailer {}
 impl AuthMailer {
@@ -19,15 +22,16 @@ impl AuthMailer {
     /// # Errors
     ///
     /// When email sending is failed
-    pub async fn send_welcome(ctx: &AppContext, user: &users::Model) -> Result<()> {
+    pub async fn send_welcome(ctx: &AppContext, user: &user::Model, verify_token: Option<&str>) -> Result<()> {
         Self::mail_template(
             ctx,
             &welcome,
             mailer::Args {
                 to: user.email.clone(),
                 locals: json!({
+                  "app_name": APP_NAME,
                   "name": user.name,
-                  "verifyToken": user.email_verification_token,
+                  "verifyToken": verify_token.unwrap_or_default(),
                   "host": ctx.config.server.full_url()
                 }),
                 ..Default::default()
@@ -43,15 +47,16 @@ impl AuthMailer {
     /// # Errors
     ///
     /// When email sending is failed
-    pub async fn forgot_password(ctx: &AppContext, user: &users::Model) -> Result<()> {
+    pub async fn forgot_password(ctx: &AppContext, user: &user::Model, reset_token: &str) -> Result<()> {
         Self::mail_template(
             ctx,
             &forgot,
             mailer::Args {
                 to: user.email.clone(),
                 locals: json!({
+                  "app_name": APP_NAME,
                   "name": user.name,
-                  "resetToken": user.reset_token,
+                  "resetToken": reset_token,
                   "host": ctx.config.server.full_url()
                 }),
                 ..Default::default()
@@ -62,22 +67,22 @@ impl AuthMailer {
         Ok(())
     }
 
-    /// Sends a magic link authentication email to the user.
+    /// 发送 6 位数字 OTP 登录验证码邮件
     ///
     /// # Errors
     ///
-    /// When email sending is failed
-    pub async fn send_magic_link(ctx: &AppContext, user: &users::Model) -> Result<()> {
+    /// 当邮件渲染或投递失败时返回 `Result`
+    pub async fn send_otp(ctx: &AppContext, user: &user::Model, code: &str) -> Result<()> {
         Self::mail_template(
             ctx,
-            &magic_link,
+            &otp,
             mailer::Args {
                 to: user.email.clone(),
                 locals: json!({
+                  "app_name": APP_NAME,
                   "name": user.name,
-                  "token": user.magic_link_token.clone().ok_or_else(|| Error::string(
-                            "the user model not contains magic link token",
-                    ))?,
+                  "code": code,
+                  "token": code,
                   "host": ctx.config.server.full_url()
                 }),
                 ..Default::default()

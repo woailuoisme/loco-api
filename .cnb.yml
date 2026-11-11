@@ -1,111 +1,105 @@
-# CNB 流水线 — Loco 应用 Docker 镜像构建与推送
-# 文档: https://docs.cnb.cool/build/quick-start.html
+# ── 全局：手动触发 & 标签发布 ────────────────────────────────────────
+# 项目: loco-api (Loco 框架 / Rust)
+# 基础镜像: Dockerfile = Debian trixie | Dockerfile.alpine = Alpine musl
+# 运行时: target/release/locos | 入口: /app/locos start | 端口: 5150
+# Chart: helm/loco-api（OCI 推送至 ${CNB_HELM_REGISTRY}）
 #
-# 内置变量 (CNB 自动注入):
-#   CNB_DOCKER_REGISTRY      — 镜像仓库地址，如 docker.cnb.cool
-#   CNB_REPO_SLUG_LOWERCASE  — 仓库路径小写，如 my-org/my-repo
-#
-# 触发方式:
-#   页面手动触发          → web_trigger_* 按钮 (trixie / alpine / multi)
-#   v* tag push           → 版本发布自动构建并推送 trixie 与 alpine (amd64) 镜像
-#
+# 触发策略:
+#   1. main 分支: 仅允许网页手动触发 (web_trigger_*)
+#   2. v* 标签:   版本发布自动化交付流水线 (Release -> Docker -> Helm)
 
-# ── 流水线定义（`.` 前缀键不会被当作分支名）─────────────────────────────
-.trixie_pipeline: &trixie_pipeline
-  - services:
-      - docker
-    stages:
-      - name: Build and push Trixie (amd64 only)
-        script: |
-          set -euo pipefail
-          REGISTRY="${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}"
-
-          docker buildx build \
-            --platform linux/amd64 \
-            --tag "${REGISTRY}:trixie" \
-            --file ./Dockerfile \
-            --cache-from "type=registry,ref=${REGISTRY}:cache-trixie" \
-            --cache-to "type=registry,ref=${REGISTRY}:cache-trixie,mode=max,image-manifest=true,oci-mediatypes=true" \
-            --push \
-            .
-
-.trixie_multi_pipeline: &trixie_multi_pipeline
-  - services:
-      - docker
-    stages:
-      - name: Build and push Trixie multi-arch (amd64 + arm64)
-        script: |
-          set -euo pipefail
-          REGISTRY="${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}"
-
-          docker buildx build \
-            --platform linux/amd64,linux/arm64 \
-            --tag "${REGISTRY}:trixie" \
-            --tag "${REGISTRY}:trixie-multi" \
-            --file ./Dockerfile \
-            --cache-from "type=registry,ref=${REGISTRY}:cache-multi" \
-            --cache-to "type=registry,ref=${REGISTRY}:cache-multi,mode=max,image-manifest=true,oci-mediatypes=true" \
-            --push \
-            .
-
-.alpine_pipeline: &alpine_pipeline
-  - services:
-      - docker
-    stages:
-      - name: Build and push Alpine (amd64 only)
-        script: |
-          set -euo pipefail
-          REGISTRY="${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}"
-
-          docker buildx build \
-            --platform linux/amd64 \
-            --tag "${REGISTRY}:alpine" \
-            --file ./Dockerfile.alpine \
-            --cache-from "type=registry,ref=${REGISTRY}:cache-alpine" \
-            --cache-to "type=registry,ref=${REGISTRY}:cache-alpine,mode=max,image-manifest=true,oci-mediatypes=true" \
-            --push \
-            .
-
-.alpine_multi_pipeline: &alpine_multi_pipeline
-  - services:
-      - docker
-    stages:
-      - name: Build and push Alpine multi-arch (amd64 + arm64)
-        script: |
-          set -euo pipefail
-          REGISTRY="${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}"
-
-          docker buildx build \
-            --platform linux/amd64,linux/arm64 \
-            --tag "${REGISTRY}:alpine" \
-            --tag "${REGISTRY}:alpine-multi" \
-            --file ./Dockerfile.alpine \
-            --cache-from "type=registry,ref=${REGISTRY}:cache-alpine-multi" \
-            --cache-to "type=registry,ref=${REGISTRY}:cache-alpine-multi,mode=max,image-manifest=true,oci-mediatypes=true" \
-            --push \
-            .
-
-# ── main 分支：仅保留页面手动触发（已移除 push 触发）────────────────────
+# ── main 分支：网页手动触发（常规 push 不触发构建）──────────────────
+# 按钮定义见 .cnb/web_trigger.yml
 main:
-  web_trigger_trixie: *trixie_pipeline
-  web_trigger_alpine: *alpine_pipeline
-  web_trigger_multi: *trixie_multi_pipeline
-  web_trigger_alpine_multi: *alpine_multi_pipeline
-
-# ── 兜底：其余分支手动构建与 tag 发布 ──────────────────────────────────
-$:
-  web_trigger_trixie: *trixie_pipeline
-  web_trigger_alpine: *alpine_pipeline
-  web_trigger_multi: *trixie_multi_pipeline
-  web_trigger_alpine_multi: *alpine_multi_pipeline
-
-  tag_push:
-    # 单条流水线：stages 之间串行执行，后置步骤才能依赖前序产物
+  # 网页按钮：Trixie 单架构（耗时最短）
+  web_trigger_trixie: &trixie_amd64
     - services:
         - docker
       stages:
-        # 阶段 1：构建并推送 Docker 镜像
-        - name: Build and push release (trixie amd64)
+        - name: Build and push Trixie image (amd64)
+          script: |
+            set -euo pipefail
+            REGISTRY="${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}"
+
+            docker buildx build \
+              --platform linux/amd64 \
+              --cache-from "type=registry,ref=${REGISTRY}:cache-trixie" \
+              --cache-to "type=registry,ref=${REGISTRY}:cache-trixie,mode=max,image-manifest=true,oci-mediatypes=true" \
+              -f Dockerfile \
+              -t "${REGISTRY}:trixie" \
+              --push .
+
+  # 网页按钮：Alpine 单架构（体积最小）
+  web_trigger_alpine:
+    - services:
+        - docker
+      stages:
+        - name: Build and push Alpine image (amd64)
+          script: |
+            set -euo pipefail
+            REGISTRY="${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}"
+
+            docker buildx build \
+              --platform linux/amd64 \
+              --cache-from "type=registry,ref=${REGISTRY}:cache-alpine" \
+              --cache-to "type=registry,ref=${REGISTRY}:cache-alpine,mode=max,image-manifest=true,oci-mediatypes=true" \
+              -f Dockerfile.alpine \
+              -t "${REGISTRY}:alpine" \
+              --push .
+
+  # 网页按钮：Trixie 双架构
+  web_trigger_multi:
+    - services:
+        - docker
+      stages:
+        - name: Build and push Trixie image (amd64 + arm64)
+          script: |
+            set -euo pipefail
+            REGISTRY="${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}"
+
+            docker buildx build \
+              --platform linux/amd64,linux/arm64 \
+              --cache-from "type=registry,ref=${REGISTRY}:cache-multi" \
+              --cache-to "type=registry,ref=${REGISTRY}:cache-multi,mode=max,image-manifest=true,oci-mediatypes=true" \
+              -f Dockerfile \
+              -t "${REGISTRY}:trixie" \
+              -t "${REGISTRY}:trixie-multi" \
+              --push .
+
+  # 网页按钮：Alpine 双架构
+  web_trigger_alpine_multi:
+    - services:
+        - docker
+      stages:
+        - name: Build and push Alpine image (amd64 + arm64)
+          script: |
+            set -euo pipefail
+            REGISTRY="${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}"
+
+            docker buildx build \
+              --platform linux/amd64,linux/arm64 \
+              --cache-from "type=registry,ref=${REGISTRY}:cache-alpine-multi" \
+              --cache-to "type=registry,ref=${REGISTRY}:cache-alpine-multi,mode=max,image-manifest=true,oci-mediatypes=true" \
+              -f Dockerfile.alpine \
+              -t "${REGISTRY}:alpine" \
+              -t "${REGISTRY}:alpine-multi" \
+              --push .
+
+  # 兼容默认网页触发按钮（未指定 event 时落到 Trixie amd64）
+  web_trigger: *trixie_amd64
+
+# ── 正式发版 (v*)：镜像与 Chart、Release 联动发布 ─────────────────────
+# 与 GitHub Actions (.github/workflows/release.yaml) 保持 100% 行为和顺序对齐:
+#   阶段 1: 构建并推送 Docker 镜像至 CNB 制品库
+#   阶段 2: 打包并推送 Helm Chart (OCI) 至 CNB Helm Registry
+#   阶段 3: 使用 git-cliff 生成版本变更说明并创建 CNB Release
+v*:
+  tag_push:
+    - services:
+        - docker
+      stages:
+        # 阶段 1：构建并推送 Docker 镜像 (Debian Trixie amd64)
+        - name: Build and push release image
           script: |
             set -euo pipefail
             REGISTRY="${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}"
@@ -113,42 +107,44 @@ $:
 
             docker buildx build \
               --platform linux/amd64 \
-              --tag "${REGISTRY}:${VERSION}" \
-              --file ./Dockerfile \
               --cache-from "type=registry,ref=${REGISTRY}:cache-trixie" \
               --cache-to "type=registry,ref=${REGISTRY}:cache-trixie,mode=max,image-manifest=true,oci-mediatypes=true" \
-              --push \
-              .
+              -f Dockerfile \
+              -t "${REGISTRY}:latest" \
+              -t "${REGISTRY}:${VERSION}" \
+              -t "${REGISTRY}:trixie" \
+              --push .
 
-        # 阶段 2：打包并推送 Helm Chart（保证镜像已入库）
-        - name: Package and push Helm chart to CNB
+        # 注意：stages 下的元素是 Job（不是嵌套的 Pipeline）。
+        # 容器镜像写在 job 的 `image:` 上；写 `docker:` + 内层 `stages:` 会被静默忽略。
+        # 阶段 2：打包并推送 Helm Chart (OCI)
+        - name: Helm chart package & push
           image: alpine/helm:4
           script: |
             set -euo pipefail
             VERSION="${CNB_BRANCH##*/}"
-            SEMVER="${VERSION#v}"
+            CHART_VERSION="${VERSION#v}"
             HELM_REGISTRY="${CNB_HELM_REGISTRY:-helm.cnb.cool}"
             TARGET_NAMESPACE="${CNB_GROUP_SLUG_LOWERCASE:-${CNB_REPO_SLUG_LOWERCASE}}"
 
-            helm lint ./helm/loco-api
+            helm lint helm/loco-api
             echo "${CNB_TOKEN}" | helm registry login "${HELM_REGISTRY}" -u "${CNB_TOKEN_USER_NAME:-cnb}" --password-stdin
-
             mkdir -p dist
-            helm package ./helm/loco-api --version "${SEMVER}" --app-version "${VERSION}" -d dist
-            helm push dist/*.tgz "oci://${HELM_REGISTRY}/${TARGET_NAMESPACE}"
+            helm package helm/loco-api --version "${CHART_VERSION}" --app-version "${VERSION}" -d dist
+            helm push "dist/loco-api-${CHART_VERSION}.tgz" "oci://${HELM_REGISTRY}/${TARGET_NAMESPACE}"
 
-        # 阶段 3：生成变更日志并创建 Release（jobs 数组形式为串行）
+        # 阶段 3：使用 git-cliff 生成变更日志并创建 CNB Release（jobs 数组形式为串行）
         - name: Changelog & Release
           jobs:
             - name: Generate Changelog with git-cliff
               image: orhunp/git-cliff:latest
               script: |
                 set -eu
-                git-cliff --latest --strip header -o CHANGELOG.md
+                git-cliff --latest --strip header -o RELEASE_NOTES.md
             - name: Create CNB Release
               type: git:release
               options:
-                tag: ${CNB_BRANCH}
+                # tag_push 事件下无需传 tag（官方：自动取触发的 Tag 名）
                 title: "Release ${CNB_BRANCH}"
-                descriptionFromFile: CHANGELOG.md
+                descriptionFromFile: RELEASE_NOTES.md
                 latest: true

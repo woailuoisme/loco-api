@@ -1,0 +1,21 @@
+# Cargo Audit Configuration
+# https://docs.rs/cargo-audit/latest/cargo_audit/config/struct.AuditConfig.html
+
+[advisories]
+ignore = [
+    # RUSTSEC-2026-0387: crypto-bigint 0.5.5
+    # 间接传递依赖：meilisearch-sdk 0.33 -> jsonwebtoken 10.4 -> p256/p384 -> crypto-bigint 0.5.5
+    # 说明：项目业务未直接使用 crypto-bigint，且 JWT 签名验证采用标准常量时间对比。
+    "RUSTSEC-2026-0387",
+
+    # RUSTSEC-2026-0459: libsqlite3-sys 0.37.0
+    # 间接传递依赖：loco-rs 1.3 / sea-orm 2.0 -> sqlx-sqlite 0.9.0 -> libsqlite3-sys 0.37.0
+    # 说明：本项目核心生产与测试数据库统一为 PostgreSQL，不依赖且不向不受信客户端暴露 SQLite 引擎。
+    "RUSTSEC-2026-0459",
+
+    # RUSTSEC-2023-0071: rsa 0.9.10 Marvin Attack
+    # 间接传递依赖：meilisearch-sdk 0.33 -> jsonwebtoken 10.4 -> rsa 0.9.10
+    # 说明：Marvin Attack 针对 RSA PKCS#1 v1.5 私钥解密操作。项目核心 JWT 采用对称 HS256，
+    # OIDC 仅执行公钥签名校验，不执行 PKCS#1 v1.5 私钥解密，因此不存在旁路定时攻击暴露面。
+    "RUSTSEC-2023-0071",
+]

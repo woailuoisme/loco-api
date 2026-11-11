@@ -1,99 +1,96 @@
-# Loco configuration file documentation
+# Loco 应用测试环境配置文件 (test.yaml)
 
-# Application logging configuration
+# 1. 日志配置 (测试时关闭输出以保持控制台清爽)
 logger:
-  # Enable or disable logging.
   enable: false
-  # Enable pretty backtrace (sets RUST_BACKTRACE=1)
-  pretty_backtrace: true
-  # Log level, options: trace, debug, info, warn or error.
+  pretty_backtrace: false
   level: debug
-  # Define the logging format. options: compact, pretty or json
   format: compact
-  # By default the logger has filtering only logs that came from your code or logs that came from `loco` framework. to see all third party libraries
-  # Uncomment the line below to override to see all third party libraries you can enable this config and override the logger filters.
-  # override_filter: trace
+  file_appender:
+    enable: false
+    non_blocking: true
+    level: debug
+    format: compact
+    rotation: daily
+    dir: ./storages/logs
+    filename_prefix: loco-api
+    filename_suffix: log
+    max_log_files: 7
 
-# Web server configuration
+# 2. Web 服务配置
 server:
-  # Port on which the server will listen. the server binding is 0.0.0.0:{PORT}
   port: 5150
-  # The UI hostname or IP address that mailers will point to.
   host: http://localhost
-  # Out of the box middleware configuration. to disable middleware you can changed the `enable` field to `false` of comment the middleware block
+  ident: ""
   middlewares:
 
-# Worker Configuration
+# 3. 后台任务模式 (测试必须同步阻塞完成)
 workers:
-  # specifies the worker mode. Options:
-  #   - BackgroundQueue - Workers operate asynchronously in the background, processing queued.
-  #   - ForegroundBlocking - Workers operate in the foreground and block until tasks are completed.
-  #   - BackgroundAsync - Workers operate asynchronously in the background, processing tasks with async capabilities.
   mode: ForegroundBlocking
 
-  
-# Queue Configuration
-queue:
-  kind: Redis
-  
-  # Redis connection URI
-  uri: <%= get_env(name="REDIS_URL", default="redis://127.0.0.1") %>
-  # Dangerously flush all data in Redis on startup. dangerous operation, make sure that you using this flag only on dev environments or test mode
-  dangerously_flush: false
-  
-
-# Mailer Configuration.
+# 4. 邮件服务配置 (Stub 内存投递，零外部网络依赖)
 mailer:
   stub: true
-  # SMTP mailer configuration.
   smtp:
-    # Enable/Disable smtp mailer.
     enable: true
-    # SMTP server host. e.x localhost, smtp.gmail.com
-    host: <%= get_env(name="MAILER_HOST", default="localhost") %>
-    # SMTP server port
+    host: localhost
     port: 1025
-    # Use secure connection (SSL/TLS).
     secure: false
-    # auth:
-    #   user:
-    #   password:
 
-# Initializers Configuration
-# initializers:
-#  oauth2:
-#    authorization_code: # Authorization code grant type
-#      - client_identifier: google # Identifier for the OAuth2 provider. Replace 'google' with your provider's name if different, must be unique within the oauth2 config.
-#        ... other fields
+# 5. 对象存储配置 (本地文件存储，隔离外部 S3)
+storage:
+  kind: Local
 
-# Database Configuration
+# 6. 数据库配置
 database:
-  # Database connection URI
-  uri: <%= get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/loco-api_test") %>
-  # When enabled, the sql query will be logged.
+  uri: <%= get_env(name="DB_URL_TEST", default="postgres://postgres:598f18a1c99d539ced6631add2b428b3@127.0.0.1:5432/loco_api_test") %>
   enable_logging: false
-  # Set the timeout duration when acquiring a connection.
   connect_timeout: <%= get_env(name="DB_CONNECT_TIMEOUT", default="500") %>
-  # Set the idle duration before closing a connection.
   idle_timeout: <%= get_env(name="DB_IDLE_TIMEOUT", default="500") %>
-  # Minimum number of connections for a pool.
   min_connections: <%= get_env(name="DB_MIN_CONNECTIONS", default="1") %>
-  # Maximum number of connections for a pool. More than one, so code that holds
-  # a transaction (or a lock) while another query or a background job needs a
-  # connection does not stall until `connect_timeout` fails it.
-  max_connections: <%= get_env(name="DB_MAX_CONNECTIONS", default="5") %>
-  # Run migration up when application loaded
+  max_connections: <%= get_env(name="DB_MAX_CONNECTIONS", default="1") %>
   auto_migrate: true
-  # Truncate database when application loaded. This is a dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_truncate: true
-  # Recreating schema when application loaded.  This is a dangerous operation, make sure that you using this flag only on dev environments or test mode
-  dangerously_recreate: true
 
-# Authentication Configuration
+# 7. 身份认证与安全配置
 auth:
-  # JWT authentication
   jwt:
-    # Secret key for token generation and verification
-    secret: c2bigLWGH1Hymg1fhZEz
-    # Token expiration time in seconds
-    expiration: 604800 # 7 days
+    secret: <%= get_env(name="JWT_SECRET", default="JrpYhwuDmrP0LuVeg9PVtest_secret_for_unit_tests") %>
+    expiration: 604800
+
+# 8. 缓存配置 (InMem 纯内存缓存，零 Redis 依赖)
+cache:
+  kind: InMem
+
+# 9. 测试应用设置桩
+settings:
+  oauth2:
+    google:
+      client_id: test_client_id
+      client_secret: test_client_secret
+  media:
+    driver: direct
+    base_url: "http://localhost:5150/v1/files"
+  telegram:
+    bot_token: ""
+    api_url: "https://api.telegram.org"
+  scout:
+    meilisearch:
+      host: "http://localhost:7700"
+      prefix: "loco_test_"
+  system:
+    machine_id: 1
+  centrifugo:
+    api_endpoint: "http://localhost:8000/api"
+    api_key: "test_centrifugo_api_key"
+    token_hmac_secret: "test_centrifugo_token_hmac_secret_for_tests"
+    token_audience: "centrifugo"
+    ws_url: "ws://localhost:8000/connection/websocket"
+    token_ttl_secs: 3600
+  opentelemetry:
+    enabled: <%= get_env(name="OTEL_ENABLED", default="false") %>
+    endpoint: "<%= get_env(name='OTEL_EXPORTER_OTLP_ENDPOINT', default='http://127.0.0.1:4318') %>"
+    service_name: "<%= get_env(name='OTEL_SERVICE_NAME', default='loco-api-test') %>"
+    sample_ratio: 1.0
+    export_timeout_secs: 1
+

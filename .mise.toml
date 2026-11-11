@@ -9,6 +9,7 @@ rust = "stable"
 "cargo:loco" = "latest"
 "cargo:sea-orm-cli" = "latest"
 "cargo:cargo-insta" = "latest"
+"cargo:cargo-sweep" = "latest"
 
 just = "latest"
 lefthook = 'latest'

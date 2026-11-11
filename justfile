@@ -1,5 +1,8 @@
 # Loco API - Task Runner (Justfile)
 # Run `just` or `just --list` to view all available commands
+set shell := ["bash", "-euo", "pipefail", "-c"]
+set dotenv-load := true
+app_port := env("APP_PORT", "5150")
 
 default:
     @just --list
@@ -15,6 +18,14 @@ dev *args:
 # Start with file watching and auto-restart
 watch *args:
     cargo loco watch {{args}}
+
+# Build release binary and start the server (ideal for benchmarks and perf testing)
+start-release *args: build
+    ./target/release/locos start {{args}}
+
+# Build release binary and start server in production mode
+prod *args: build
+    LOCO_ENV=production ./target/release/locos start {{args}}
 
 # Print all registered HTTP routes
 routes:
@@ -71,9 +82,13 @@ fmt-check:
 lint:
     cargo clippy --all-targets -- -D warnings
 
-# Run all test suites
+# Run all test suites (auto-detects cargo-nextest with fallback to cargo test)
 test *args:
-    cargo test {{args}}
+    @if command -v cargo-nextest >/dev/null 2>&1; then \
+        cargo nextest run {{args}}; \
+    else \
+        cargo test {{args}}; \
+    fi
 
 # Build optimized release binary (target/release/locos)
 build:
@@ -82,18 +97,24 @@ build:
 # Complete quality gate: format check, lint, and test
 check: fmt-check lint test
 
+# 压测（wrk）
+wrk path="/livez" *args="":
+    wrk -t4 -c200 -d30s --latency {{args}} "http://localhost:{{app_port}}{{path}}"
+
+oha path="/livez":
+	oha -z 30s -c 200 --latency-correction "http://localhost:{{app_port}}{{path}}"
+
+
 # ------------------------------------------------------------------------------
-# Container & Infrastructure
+# Maintenance & Cleanup
 # ------------------------------------------------------------------------------
 
-# Start Docker Compose services in background
-up:
-    docker compose up -d
-
-# Stop Docker Compose services
-down:
-    docker compose down
-
-# Follow logs from Docker Compose services
-logs *args:
-    docker compose logs -f {{args}}
+# Smart sweep target directory (removes stale artifacts & incremental cache, keeps latest build)
+sweep maxsize="2000":
+    @if command -v cargo-sweep >/dev/null 2>&1; then \
+        cargo sweep --maxsize {{maxsize}}; \
+    else \
+        echo "⚠️ cargo-sweep not installed. Run: cargo install cargo-sweep"; \
+    fi
+    @rm -rf target/debug/incremental
+    @echo "✅ target directory cleaned (incremental cache wiped, stale artifacts purged)"

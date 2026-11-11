@@ -16,7 +16,6 @@ pre-commit:
       run: rumdl fmt {staged_files}
       stage_fixed: true
 
-# 推送前质量验证 (按需开启：防止破坏性修改推送到远程分支)
 # pre-push:
 #   parallel: false
 #   jobs:

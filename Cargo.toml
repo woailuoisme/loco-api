@@ -163,5 +163,4 @@ debug = 1
 debug = false
 
 [profile.release]
-lto = "thin"
 strip = "debuginfo"

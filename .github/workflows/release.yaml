@@ -1,11 +1,4 @@
-# GitHub Actions — 统一发布交付流水线 (Release & Delivery)
-# 触发策略: 仅在推送版本标签 (v*) 或手动触发时执行，与 CNB (.cnb.yml) 保持 100% 行为对齐
-#
-# 职责分工:
-#   1. docker-build:   构建 Linux amd64 镜像并推送到 GHCR
-#   2. helm-release:   提取版本，打包并以 OCI 协议推送 Helm Chart 至 GHCR
-#   3. github-release: 使用 git-cliff 提取版本变更日志并创建 GitHub Release
-
+# 发布流水线：Docker 镜像 -> Helm Chart (OCI) -> GitHub Release
 name: Release & Delivery
 
 on:
@@ -27,7 +20,6 @@ defaults:
     shell: bash
 
 jobs:
-  # ── 阶段 1: 构建 Docker 镜像并推送至 GHCR ────────────────────────────────
   docker-build:
     name: Build & Push Docker Image
     runs-on: ubuntu-24.04
@@ -72,7 +64,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # ── 阶段 2: 打包并推送 Helm Chart 至 GHCR (OCI) ─────────────────────────
   helm-release:
     name: Push Helm Chart (OCI)
     runs-on: ubuntu-24.04
@@ -99,7 +90,6 @@ jobs:
           helm package ./helm/loco-api --version "${SEMVER}" --app-version "${VERSION}" -d dist
           helm push dist/*.tgz "${OCI_TARGET}"
 
-  # ── 阶段 3: 使用 git-cliff 生成变更日志并创建 GitHub Release ────────────────
   github-release:
     name: Create GitHub Release
     runs-on: ubuntu-24.04

@@ -1,58 +1,28 @@
-# ── 全局：手动触发 & 标签发布 ────────────────────────────────────────
-# 项目: loco-api (Loco 框架 / Rust)
-# 基础镜像: Dockerfile = Debian trixie | Dockerfile.alpine = Alpine musl
-# 运行时: target/release/locos | 入口: /app/locos start | 端口: 5150
-# Chart: helm/loco-api（OCI 推送至 ${CNB_HELM_REGISTRY}）
-#
-# 触发策略:
-#   1. main 分支: 仅允许网页手动触发 (web_trigger_*)
-#   2. v* 标签:   版本发布自动化交付流水线 (Release -> Docker -> Helm)
-
-# ── main 分支：网页手动触发（常规 push 不触发构建）──────────────────
-# 按钮定义见 .cnb/web_trigger.yml
+# loco-api：main 分支仅网页手动触发；v* 标签自动发布 镜像 + Chart + Release
+# 运行时 target/release/locos（入口 start，端口 5150）；按钮见 .cnb/web_trigger.yml
 main:
-  # 网页按钮：Trixie 单架构（耗时最短）
-  web_trigger_trixie: &trixie_amd64
+  web_trigger_amd64: &build_amd64
     - services:
         - docker
       stages:
-        - name: Build and push Trixie image (amd64)
+        - name: Build and push image (amd64)
           script: |
             set -euo pipefail
             REGISTRY="${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}"
 
             docker buildx build \
               --platform linux/amd64 \
-              --cache-from "type=registry,ref=${REGISTRY}:cache-trixie" \
-              --cache-to "type=registry,ref=${REGISTRY}:cache-trixie,mode=max,image-manifest=true,oci-mediatypes=true" \
+              --cache-from "type=registry,ref=${REGISTRY}:cache-amd64" \
+              --cache-to "type=registry,ref=${REGISTRY}:cache-amd64,mode=max,image-manifest=true,oci-mediatypes=true" \
               -f Dockerfile \
-              -t "${REGISTRY}:trixie" \
+              -t "${REGISTRY}:latest" \
               --push .
 
-  # 网页按钮：Alpine 单架构（体积最小）
-  web_trigger_alpine:
-    - services:
-        - docker
-      stages:
-        - name: Build and push Alpine image (amd64)
-          script: |
-            set -euo pipefail
-            REGISTRY="${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}"
-
-            docker buildx build \
-              --platform linux/amd64 \
-              --cache-from "type=registry,ref=${REGISTRY}:cache-alpine" \
-              --cache-to "type=registry,ref=${REGISTRY}:cache-alpine,mode=max,image-manifest=true,oci-mediatypes=true" \
-              -f Dockerfile.alpine \
-              -t "${REGISTRY}:alpine" \
-              --push .
-
-  # 网页按钮：Trixie 双架构
   web_trigger_multi:
     - services:
         - docker
       stages:
-        - name: Build and push Trixie image (amd64 + arm64)
+        - name: Build and push image (amd64 + arm64)
           script: |
             set -euo pipefail
             REGISTRY="${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}"
@@ -62,43 +32,19 @@ main:
               --cache-from "type=registry,ref=${REGISTRY}:cache-multi" \
               --cache-to "type=registry,ref=${REGISTRY}:cache-multi,mode=max,image-manifest=true,oci-mediatypes=true" \
               -f Dockerfile \
-              -t "${REGISTRY}:trixie" \
-              -t "${REGISTRY}:trixie-multi" \
+              -t "${REGISTRY}:latest" \
+              -t "${REGISTRY}:multi" \
               --push .
 
-  # 网页按钮：Alpine 双架构
-  web_trigger_alpine_multi:
-    - services:
-        - docker
-      stages:
-        - name: Build and push Alpine image (amd64 + arm64)
-          script: |
-            set -euo pipefail
-            REGISTRY="${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}"
+  # 默认网页按钮回落到 amd64
+  web_trigger: *build_amd64
 
-            docker buildx build \
-              --platform linux/amd64,linux/arm64 \
-              --cache-from "type=registry,ref=${REGISTRY}:cache-alpine-multi" \
-              --cache-to "type=registry,ref=${REGISTRY}:cache-alpine-multi,mode=max,image-manifest=true,oci-mediatypes=true" \
-              -f Dockerfile.alpine \
-              -t "${REGISTRY}:alpine" \
-              -t "${REGISTRY}:alpine-multi" \
-              --push .
-
-  # 兼容默认网页触发按钮（未指定 event 时落到 Trixie amd64）
-  web_trigger: *trixie_amd64
-
-# ── 正式发版 (v*)：镜像与 Chart、Release 联动发布 ─────────────────────
-# 与 GitHub Actions (.github/workflows/release.yaml) 保持 100% 行为和顺序对齐:
-#   阶段 1: 构建并推送 Docker 镜像至 CNB 制品库
-#   阶段 2: 打包并推送 Helm Chart (OCI) 至 CNB Helm Registry
-#   阶段 3: 使用 git-cliff 生成版本变更说明并创建 CNB Release
+# 发版顺序对齐 .github/workflows/release.yaml
 v*:
   tag_push:
     - services:
         - docker
       stages:
-        # 阶段 1：构建并推送 Docker 镜像 (Debian Trixie amd64)
         - name: Build and push release image
           script: |
             set -euo pipefail
@@ -107,17 +53,14 @@ v*:
 
             docker buildx build \
               --platform linux/amd64 \
-              --cache-from "type=registry,ref=${REGISTRY}:cache-trixie" \
-              --cache-to "type=registry,ref=${REGISTRY}:cache-trixie,mode=max,image-manifest=true,oci-mediatypes=true" \
+              --cache-from "type=registry,ref=${REGISTRY}:cache-amd64" \
+              --cache-to "type=registry,ref=${REGISTRY}:cache-amd64,mode=max,image-manifest=true,oci-mediatypes=true" \
               -f Dockerfile \
               -t "${REGISTRY}:latest" \
               -t "${REGISTRY}:${VERSION}" \
-              -t "${REGISTRY}:trixie" \
               --push .
 
-        # 注意：stages 下的元素是 Job（不是嵌套的 Pipeline）。
-        # 容器镜像写在 job 的 `image:` 上；写 `docker:` + 内层 `stages:` 会被静默忽略。
-        # 阶段 2：打包并推送 Helm Chart (OCI)
+        # stages 下是 Job：镜像写 image:，写 docker: + 内层 stages 会被静默忽略
         - name: Helm chart package & push
           image: alpine/helm:4
           script: |
@@ -133,7 +76,7 @@ v*:
             helm package helm/loco-api --version "${CHART_VERSION}" --app-version "${VERSION}" -d dist
             helm push "dist/loco-api-${CHART_VERSION}.tgz" "oci://${HELM_REGISTRY}/${TARGET_NAMESPACE}"
 
-        # 阶段 3：使用 git-cliff 生成变更日志并创建 CNB Release（jobs 数组形式为串行）
+        # jobs 数组为串行：保证 RELEASE_NOTES.md 先生成
         - name: Changelog & Release
           jobs:
             - name: Generate Changelog with git-cliff
@@ -144,7 +87,6 @@ v*:
             - name: Create CNB Release
               type: git:release
               options:
-                # tag_push 事件下无需传 tag（官方：自动取触发的 Tag 名）
                 title: "Release ${CNB_BRANCH}"
                 descriptionFromFile: RELEASE_NOTES.md
                 latest: true

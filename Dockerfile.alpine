@@ -1,12 +1,17 @@
-ARG RUST_VERSION=1.99
+ARG RUST_VERSION=1.100
 ARG ALPINE_VERSION=3.24
+ARG CARGO_CHEF_VERSION=0.1.78
 
 # ── Chef 阶段 ─────────────────────────────────────────────────────────────────
-FROM lukemathwalker/cargo-chef:latest-rust-${RUST_VERSION}-alpine${ALPINE_VERSION} AS chef
+FROM rust:${RUST_VERSION}-alpine${ALPINE_VERSION} AS chef
+ARG CARGO_CHEF_VERSION
 WORKDIR /app
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
-# 安装编译 vendored openssl (openssl-src) 所需的 perl 与 make 构建工具
-RUN apk add --no-cache perl make
+# 安装 cargo-chef 预编译安装脚本所需的 curl 与 xz
+RUN apk add --no-cache curl xz \
+    && curl --proto '=https' --tlsv1.2 -LsSf \
+        "https://github.com/LukeMathWalker/cargo-chef/releases/download/v${CARGO_CHEF_VERSION}/cargo-chef-installer.sh" | sh
 
 # 关闭 musl 静态 CRT，生成动态链接 ELF 显著缩减体积（需在 chef 阶段统一声明）
 ENV RUSTFLAGS="-C target-feature=-crt-static"
@@ -35,19 +40,17 @@ ENV LOCO_ENV=production \
     APP_BINDING=0.0.0.0 \
     TZ=Asia/Shanghai
 
-# 出站证书、时区、tini 及动态 musl (-crt-static) 所需的 libgcc
-RUN apk add -q --no-cache -u ca-certificates-bundle libgcc tini curl tzdata \
-    && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-
 WORKDIR /app
 
-# 二进制置于 PATH 并软链接兼容 /app/locos
-COPY --from=builder --chown=nobody:nogroup /app/target/release/locos /bin/locos
-RUN ln -s /bin/locos /app/locos
+# 出站证书、时区、tini、动态 musl (-crt-static) 所需的 libgcc 及运行目录初始化
+RUN apk add -q --no-cache -u ca-certificates-bundle libgcc tini curl tzdata \
+    && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
+    && mkdir -p /app/storages/logs /app/storages/uploads /app/storages/tmp \
+    && chown -R nobody:nogroup /app/storages \
+    && ln -s /bin/locos /app/locos
 
 COPY --chown=nobody:nogroup config/ /app/config/
-
-RUN mkdir -p storages/logs storages/uploads storages/tmp && chown -R nobody:nogroup /app/storages
+COPY --from=builder --chown=nobody:nogroup /app/target/release/locos /bin/locos
 
 USER nobody:nogroup
 EXPOSE 5150

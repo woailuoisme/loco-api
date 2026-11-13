@@ -94,7 +94,6 @@ sha2 = { version = "0.11" }
 hmac = { version = "0.13" }
 hex = { version = "0.4" }
 dotenvy = "0.15"
-openssl = { version = "0.10", features = ["vendored"] }
 
 # 5. CLI
 inquire = { version = "0.9", features = ["date", "editor", "macros"] }
@@ -164,4 +163,5 @@ debug = 1
 debug = false
 
 [profile.release]
+lto = "thin"
 strip = "debuginfo"

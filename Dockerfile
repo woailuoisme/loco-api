@@ -1,10 +1,14 @@
-ARG RUST_VERSION=1.99
+ARG RUST_VERSION=1.100
+ARG CARGO_CHEF_VERSION=0.1.78
 
 # ── Chef 阶段 ─────────────────────────────────────────────────────────────────
-# 基于 buildpack-deps，自带完整构建工具链与 perl（支持 vendored openssl 编译）
-FROM lukemathwalker/cargo-chef:latest-rust-${RUST_VERSION}-trixie AS chef
+FROM rust:${RUST_VERSION} AS chef
+ARG CARGO_CHEF_VERSION
 WORKDIR /app
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+RUN curl --proto '=https' --tlsv1.2 -LsSf \
+    "https://github.com/LukeMathWalker/cargo-chef/releases/download/v${CARGO_CHEF_VERSION}/cargo-chef-installer.sh" | sh
 
 # ── Planner 阶段 ──────────────────────────────────────────────────────────────
 FROM chef AS planner
@@ -30,20 +34,18 @@ ENV LOCO_ENV=production \
     APP_BINDING=0.0.0.0 \
     TZ=Asia/Shanghai
 
+WORKDIR /app
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates tzdata tini curl \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /app
-
-# 二进制置于 PATH 并软链接兼容 /app/locos
-COPY --from=builder --chown=nobody:nogroup /app/target/release/locos /bin/locos
-RUN ln -s /bin/locos /app/locos
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /app/storages/logs /app/storages/uploads /app/storages/tmp \
+    && chown -R nobody:nogroup /app/storages \
+    && ln -s /bin/locos /app/locos
 
 COPY --chown=nobody:nogroup config/ /app/config/
-
-RUN mkdir -p storages/logs storages/uploads storages/tmp && chown -R nobody:nogroup /app/storages
+COPY --from=builder --chown=nobody:nogroup /app/target/release/locos /bin/locos
 
 USER nobody:nogroup
 EXPOSE 5150

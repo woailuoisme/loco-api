@@ -3330,7 +3330,7 @@ dependencies = [
  "meilisearch-sdk",
  "migration",
  "mime_guess",
- "opendal",
+ "opendal 0.59.5",
  "opentelemetry",
  "opentelemetry-appender-tracing",
  "opentelemetry-otlp",
@@ -3422,7 +3422,7 @@ dependencies = [
  "lettre",
  "loco-gen",
  "notify",
- "opendal",
+ "opendal 0.58.2",
  "rand 0.9.5",
  "redis",
  "regex",
@@ -3945,10 +3945,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "33dbff14cc9bb085224256d6a81289d2f3202e85b06f408d42534b42162a4231"
 dependencies = [
  "ctor",
- "opendal-core",
- "opendal-http-transport-reqwest",
+ "opendal-core 0.58.2",
+ "opendal-http-transport-reqwest 0.58.2",
  "opendal-layer-retry",
  "opendal-service-s3",
+]
+
+[[package]]
+name = "opendal"
+version = "0.59.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "46081824c74bac9f68f0bc4408077f77b0e315c006514719c97af1c2227ac2d2"
+dependencies = [
+ "ctor",
+ "opendal-core 0.59.5",
+ "opendal-http-transport-reqwest 0.59.5",
 ]
 
 [[package]]
@@ -3978,6 +3989,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "opendal-core"
+version = "0.59.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "33d5a635dfea36a7a0c3bbb2ca34c97af17f98dd69b0cdf31a1d436a346e0a12"
+dependencies = [
+ "anyhow",
+ "asyncband 0.7.4",
+ "base64 0.23.1",
+ "bytes",
+ "futures",
+ "http",
+ "jiff",
+ "log",
+ "md-5",
+ "percent-encoding",
+ "quick-xml 0.42.0",
+ "serde",
+ "serde_json",
+ "tokio",
+ "url",
+ "uuid",
+ "web-time",
+]
+
+[[package]]
 name = "opendal-http-transport-reqwest"
 version = "0.58.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3987,7 +4023,21 @@ dependencies = [
  "futures",
  "http",
  "http-body",
- "opendal-core",
+ "opendal-core 0.58.2",
+ "reqwest 0.13.5",
+]
+
+[[package]]
+name = "opendal-http-transport-reqwest"
+version = "0.59.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fc025e163c43993e30cf1829a30b791934e5b0f7cd4d7e03acc902a9efb7e8f5"
+dependencies = [
+ "bytes",
+ "futures",
+ "http",
+ "http-body",
+ "opendal-core 0.59.5",
  "reqwest 0.13.5",
 ]
 
@@ -3999,7 +4049,7 @@ checksum = "e94db301964a25366090484d61e6da16d5979cc8faf02c3e12210dc74fafed38"
 dependencies = [
  "backon",
  "log",
- "opendal-core",
+ "opendal-core 0.58.2",
 ]
 
 [[package]]
@@ -4014,7 +4064,7 @@ dependencies = [
  "http",
  "log",
  "md-5",
- "opendal-core",
+ "opendal-core 0.58.2",
  "quick-xml 0.41.0",
  "reqsign-aws-v4",
  "reqsign-core",

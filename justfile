@@ -7,6 +7,10 @@ app_port := env("APP_PORT", "5150")
 default:
     @just --list
 
+# 释放端口占用（默认 PORT=5150，亦可指定：`just kill-port 8080`）
+kill-port port=env("PORT", "5150"):
+    lsof -ti:{{ port }} | xargs kill -9 2>/dev/null || true
+
 # ------------------------------------------------------------------------------
 # Development & Service
 # ------------------------------------------------------------------------------

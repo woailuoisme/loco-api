@@ -2,5 +2,5 @@
 serial-db = { max-threads = 1 }
 
 [[profile.default.overrides]]
-filter = 'test(requests) | test(models) | test(tasks) | test(workers)'
-test-group = 'serial-db'
+filter = "test(requests) | test(models) | test(tasks) | test(workers)"
+test-group = "serial-db"

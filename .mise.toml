@@ -1,9 +1,7 @@
-
 [settings]
 cargo.binstall = true
 
 [tools]
-# 1. 核心编译器与任务运行器
 rust = "stable"
 
 "cargo:loco" = "latest"
@@ -12,10 +10,7 @@ rust = "stable"
 "cargo:cargo-sweep" = "latest"
 
 just = "latest"
-lefthook = 'latest'
-git-cliff ='latest'
+lefthook = "latest"
+git-cliff = "latest"
 release-plz = "latest"
-rumdl = 'latest'
-
-
-
+rumdl = "latest"

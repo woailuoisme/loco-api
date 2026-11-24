@@ -153,14 +153,23 @@ ctor = "1.0.14"
 rstest = { version = "0.28" }
 tower = { version = "0.5", features = ["util"] }
 
-[profile.dev]
-debug = 1
-
-[profile.test]
-debug = 1
-
-[profile.dev.package."*"]
-debug = false
 
 [profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
 strip = "debuginfo"
+
+# Feature builds (`cargo xtask app-dev`): optimized like a release, but split
+# across every core and incremental, so a build takes seconds instead of a
+# minute and a half. The binary is bigger and a little slower; what ships, and
+# what speed checks measure, keeps [profile.release].
+[profile.fast]
+inherits = "release"
+lto = "off"
+codegen-units = 16
+incremental = true
+
+[profile.dev]
+panic = "abort"
